@@ -1,0 +1,36 @@
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+**/ios/Pods/
+**/ios/.symlinks/
+**/android/.gradle/
+**/android/local.properties
+
+# Secrets
+google-services.json
+GoogleService-Info.plist
+*.jks
+*.keystore
+*.p12
+*.mobileprovision

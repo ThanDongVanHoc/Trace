@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: trace_test
+          POSTGRES_USER: trace
+          POSTGRES_PASSWORD: trace_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trace -d trace_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://trace:trace_test_password@localhost:5432/trace_test
+      DB_SYNCHRONIZE: true
+      DATABASE_SSL: false
+      JWT_ACCESS_SECRET: ci-access-secret-at-least-thirty-two-characters
+      JWT_REFRESH_SECRET: ci-refresh-secret-at-least-thirty-two-characters
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: services/api/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm audit --omit=dev
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build apk --debug
