@@ -1,34 +1,60 @@
 # TRACE architecture
 
-## Runtime boundary
+## Runtime
 
 ```text
-Flutter mobile
-  ├─ Camera + Location
-  ├─ On-device visual model
-  ├─ Encrypted local vault
-  └─ Sync client
-           │ HTTPS /v1
+Android app (Kotlin + Compose)
+  ├─ CameraX capture + ROI selection
+  ├─ feature/enrollment
+  ├─ feature/recognition (on-device model)
+  ├─ feature/memory (last-seen rules)
+  ├─ feature/securevault (Room + encrypted files)
+  ├─ Fused Location + FCM
+  └─ Retrofit sync client
+             │ HTTPS /v1
 NestJS API
-  ├─ Authentication + sessions
-  ├─ Object/sighting sync
-  ├─ Device registry
-  └─ Notification outbox → FCM/APNs
-           │
-       PostgreSQL
+  ├─ authentication + rotated sessions
+  ├─ object and sighting sync
+  ├─ device registry
+  └─ PostgreSQL outbox → FCM
+             │
+         PostgreSQL
 ```
 
-Recognition images and embeddings remain local by default. The server syncs account data, object metadata and sightings. Evidence-image cloud upload is intentionally excluded until an explicit privacy and retention policy exists.
+Ảnh reference, evidence và embedding phải ở local theo mặc định. Backend chỉ đồng bộ tài khoản, metadata đồ vật và sighting. Upload ảnh lên cloud nằm ngoài scope cho đến khi có chính sách consent, retention và xóa dữ liệu.
 
-## Mobile dependency rule
+## Dependency rule
 
-Feature modules depend on `core/contracts`; they do not import another feature's implementation. Riverpod in `app/providers.dart` is the composition root that selects the active implementations.
+```text
+app ────────────────┬──> core/network
+                    ├──> core/database
+                    └──> four feature modules
+
+feature/* ─────────────> core/contracts
+feature/securevault ───> core/database
+```
+
+- Feature module không import implementation của feature module khác.
+- Giao tiếp chéo module chỉ dùng interface và DTO trong `core/contracts`.
+- Hilt module là composition root; thay implementation không yêu cầu sửa Compose UI.
+- `core/database/schemas/` được commit. Thay schema phải có migration và review của Thành viên 4.
+
+## Luồng chính
+
+```text
+Chụp ảnh → chọn ROI + tag → EnrollmentApi → reference + embedding → encrypted vault
+
+Frame mới → RecognitionApi(reference[]) → MATCHED
+         → lấy location nếu được cấp quyền → MemoryApi.recordSighting
+
+Chọn tag/objectId → MemoryApi.findLastSeen → thời gian + vị trí
+```
+
+Find không nhận ảnh. Ảnh chỉ xuất hiện ở enrollment, recognition và evidence của một sighting.
 
 ## Security boundary
 
-- Access token: 15 minutes by default.
-- Refresh token: rotated on every use and stored hashed server-side.
-- Mobile auth tokens: Keystore/Keychain through secure storage.
-- Local private data: AES-256-GCM implementation owned by Secure Vault.
-- Transport: HTTPS outside local development.
-- Push credentials and signing keys: deployment secrets only.
+- Access token ngắn hạn; refresh token xoay vòng và chỉ lưu hash ở server.
+- Token Android được mã hóa AES-GCM bằng key trong Android Keystore.
+- Vault production phải mã hóa tag, embedding, location, reference image và evidence trước khi persistence.
+- Release không cho cleartext HTTP; signing key, Firebase credential và database secret không commit.

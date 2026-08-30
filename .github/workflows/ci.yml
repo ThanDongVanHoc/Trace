@@ -44,19 +44,25 @@ jobs:
       - run: npm run test:e2e
       - run: npm audit --omit=dev
 
-  mobile:
+  android:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/mobile
+        working-directory: apps/android
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-java@v4
         with:
-          channel: stable
-          cache: true
-      - run: flutter pub get
-      - run: dart run build_runner build
-      - run: flutter analyze
-      - run: flutter test
-      - run: flutter build apk --debug
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Verify and build APK
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trace-debug-apk
+          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

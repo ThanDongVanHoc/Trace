@@ -1,32 +1,38 @@
 # TRACE
 
-TRACE is a local-first mobile application that remembers where tagged objects were last seen. This repository is a production-oriented prototype for Android API 24+ and iOS 15+.
+TRACE là ứng dụng Android local-first giúp người dùng ghi nhớ đồ vật đã gắn tag được nhìn thấy lần cuối ở đâu và khi nào. Nhánh `android` là prototype native có thể build thành APK, đồng thời chia bốn bài toán kỹ thuật thành bốn Gradle module độc lập để bốn thành viên phát triển song song.
 
-## Repository
+## Công nghệ
+
+- Android API 24+, Kotlin 2.3.21, Jetpack Compose, Material 3.
+- CameraX, Fused Location Provider, Firebase Cloud Messaging.
+- Hilt, Coroutines, Room + KSP, Retrofit + OkHttp.
+- Android Keystore cho token đăng nhập.
+- NestJS REST API, PostgreSQL, JWT access/refresh rotation, notification outbox.
+
+Các phiên bản Android được khóa trong `apps/android/gradle/libs.versions.toml`. Compose/Hilt/Lifecycle được giữ ở dòng tương thích AGP 8.13 và compile SDK 36; không nâng riêng lẻ nếu chưa chạy lại toàn bộ CI.
+
+## Cấu trúc
 
 ```text
-apps/mobile/       Flutter application
-services/api/      NestJS REST API
-docs/team/         Four member assignments
-compose.yaml       Local PostgreSQL
+apps/android/
+  app/                    Compose UI, CameraX, location, FCM, composition root
+  core/contracts/         DTO và interface bất biến giữa bốn module
+  core/database/          Room schema v1
+  core/network/           REST client, JWT refresh, Keystore token store
+  feature/enrollment/     Thành viên 1
+  feature/recognition/    Thành viên 2
+  feature/memory/         Thành viên 3
+  feature/securevault/    Thành viên 4
+services/api/             NestJS + PostgreSQL backend
+docs/team/                Requirement giao cho từng thành viên
 ```
 
-## Implemented foundation
+`PrototypeVisualEngine` và các `InMemory*Store` chỉ là adapter giúp tích hợp UI ngay từ đầu. Chúng không phải model nhận diện hay kho mã hóa dùng cho bản phát hành; Thành viên 2 và 4 có trách nhiệm thay chúng mà không đổi `core/contracts`.
 
-- Email/password registration and login.
-- Short-lived JWT access tokens and rotated, hashed refresh tokens.
-- Device registration for FCM/APNs.
-- Cloud object and sighting APIs.
-- PostgreSQL notification outbox and Firebase delivery worker.
-- Flutter camera, location, Tag, Recognize and Last-seen flows.
-- Versioned module contracts and Drift local schema.
-- Android Keystore/iOS Keychain token storage.
+## Chạy backend
 
-`PrototypeVisualEngine` and the in-memory stores are integration baselines, not production ML or encryption. The four assignments in `docs/team/` replace them without changing the UI contract.
-
-## Start the backend
-
-Requirements: Node.js, Docker and Docker Compose.
+Yêu cầu: Node.js 24, Docker Desktop.
 
 ```powershell
 Copy-Item .env.example .env
@@ -36,39 +42,34 @@ npm ci
 npm run start:dev
 ```
 
-Swagger UI: `http://localhost:3000/docs`  
+Swagger: `http://localhost:3000/docs`
+
 Health: `http://localhost:3000/v1/health`
 
-For a deployed environment, set `DB_SYNCHRONIZE=false` and apply `services/api/migrations/001_initial.sql` through the release pipeline.
+## Chạy Android
 
-## Start the mobile app
+Yêu cầu: Android Studio, JDK 17, Android SDK Platform 36 và Build Tools 35.0.0.
 
 ```powershell
-Set-Location apps/mobile
-flutter pub get
-dart run build_runner build
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/v1
+Set-Location apps/android
+.\gradlew.bat installDebug -PTRACE_API_BASE_URL=http://10.0.2.2:3000/v1/
 ```
 
-Use the LAN IP of the development machine instead of `10.0.2.2` on a physical Android/iOS device. iOS builds require macOS and Xcode.
+`10.0.2.2` là máy host nhìn từ Android Emulator. Khi dùng điện thoại thật, thay bằng IP LAN của máy chạy backend. Release build phải dùng HTTPS.
 
-Remote push requires the standard Firebase files:
+Để bật push notification, đặt `google-services.json` vào `apps/android/app/` và cấu hình `FIREBASE_SERVICE_ACCOUNT_JSON` ở backend. File secret này đã bị Git bỏ qua.
 
-- Android: `google-services.json`
-- iOS: `GoogleService-Info.plist`
-- API: `FIREBASE_SERVICE_ACCOUNT_JSON`
-
-These files are ignored by Git and must never be committed.
-
-## Verification
+## Kiểm tra
 
 ```powershell
-Set-Location services/api
+Set-Location apps/android
+.\gradlew.bat testDebugUnitTest lintDebug assembleDebug
+
+Set-Location ../../services/api
+npm ci
 npm run build
 npm run lint
 npm test
-
-Set-Location ../../apps/mobile
-flutter analyze
-flutter test
 ```
+
+APK debug nằm tại `apps/android/app/build/outputs/apk/debug/app-debug.apk`.

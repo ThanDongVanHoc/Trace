@@ -2,11 +2,13 @@
 
 ## Mục tiêu
 
-Thay các InMemory Store bằng persistence mã hóa, quản lý khóa đúng trên Android và iOS.
+Thay toàn bộ `InMemory*Store` bằng persistence Room và mã hóa dữ liệu nhạy cảm đúng chuẩn Android.
 
-## Code sở hữu
+## Phạm vi code
 
-`apps/mobile/lib/features/secure_vault/**` và adapter trong `core/database/**`
+- Branch: `feature/android-secure-vault`
+- Sở hữu: `apps/android/feature/securevault/**`, migration/schema trong `apps/android/core/database/**`
+- Không sửa domain DTO, Recognition, Enrollment hoặc Memory.
 
 ## API phải implement
 
@@ -14,30 +16,38 @@ Thay các InMemory Store bằng persistence mã hóa, quản lý khóa đúng tr
 - `SightingStore`
 - `SecureAssetStore`
 
-Không thay domain DTO hoặc API của ba module khác.
-
-## Bảng sở hữu
+Room schema v1 đã có:
 
 - `local_objects`
-- `secure_assets`
 - `local_object_references`
 - `local_reference_embeddings`
 - `local_sightings`
+- `secure_assets`
 
-Schema hiện tại nằm trong `core/database/trace_database.dart`.
+Không thay tên bảng/cột nếu không có migration và schema JSON mới.
 
 ## Yêu cầu
 
-- Ảnh và evidence: AES-256-GCM, nonce duy nhất cho mỗi lần mã hóa.
-- Tag, embedding và location được mã hóa trước khi ghi SQLite.
-- Master key được bảo vệ bằng Android Keystore/iOS Keychain; không hard-code.
-- Ghi file theo kiểu temp → fsync → atomic rename.
-- Xóa object phải xóa reference, sighting và asset liên quan.
-- Token đăng nhập chỉ lưu bằng `flutter_secure_storage`.
+- AES-256-GCM; nonce ngẫu nhiên 12 byte và không lặp với cùng key.
+- Master key sinh trong Android Keystore, alias có version; không hard-code hoặc export key.
+- Mã hóa tag, embedding và location trước khi ghi Room.
+- Reference/evidence image ghi thành file ciphertext; DB chỉ giữ relative path, nonce và metadata.
+- Dùng AAD gắn ciphertext với `assetId`/record ID và version để chống tráo bản ghi.
+- Ghi file theo `temp → fsync → atomic rename`; crash không để file nửa chừng.
+- Tạo object + reference + embeddings trong một Room transaction.
+- Xóa object phải cascade reference/sighting và xóa mọi file asset liên quan.
+- Decrypt/tamper/wrong-key phải trả `CRYPTO_FAILURE`; không trả plaintext hỏng.
+- Không log key, nonce+ciphertext đầy đủ, tag, embedding, location hoặc token.
+- Auth token thuộc `core/network/KeystoreTokenStore`, không thay trong task này.
 
 ## Nghiệm thu
 
-- File/database copy ra ngoài không đọc được plaintext nhạy cảm.
-- Sửa một byte ciphertext hoặc authentication tag thì decrypt thất bại.
-- Không có key, token, embedding hoặc location trong log.
-- Có test encrypt/decrypt, unique nonce, tamper, wrong key, delete cascade và restart app.
+- Copy DB/files ra ngoài không tìm thấy plaintext tag, location, embedding hoặc JPEG header.
+- Sửa 1 byte ciphertext/tag hoặc đổi AAD thì decrypt thất bại.
+- Test: round-trip, unique nonce 10.000 lần, tamper, wrong key, transaction rollback, restart app, delete cascade và orphan cleanup.
+- Commit schema `core/database/schemas/.../2.json` nếu tăng version và có migration test `1 → 2`.
+- Chạy xanh:
+
+```powershell
+.\gradlew.bat :feature:securevault:testDebugUnitTest :feature:securevault:connectedDebugAndroidTest
+```

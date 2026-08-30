@@ -16,16 +16,14 @@ dist/
 coverage/
 *.tsbuildinfo
 
-# Flutter / Dart
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
+# Android / Gradle
+.gradle/
 build/
-**/ios/Pods/
-**/ios/.symlinks/
-**/android/.gradle/
-**/android/local.properties
+**/build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
 
 # Secrets
 google-services.json

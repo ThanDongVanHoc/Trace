@@ -2,36 +2,49 @@
 
 ## Mục tiêu
 
-Tìm đồ vật đã đăng ký trong frame mới và trả về `MATCHED` hoặc `UNKNOWN`, bounding box và similarity.
+Nhận diện một đồ vật bất kỳ đã được người dùng đăng ký từ một ảnh mới. Hệ thống phải trả `MATCHED` hoặc `UNKNOWN`, không phải classifier với danh sách đồ vật cố định.
 
-## Code sở hữu
+## Phạm vi code
 
-`apps/mobile/lib/features/recognition/**` và `apps/mobile/assets/models/**`
+- Branch: `feature/android-recognition`
+- Sở hữu: `apps/android/feature/recognition/**`, model tại `feature/recognition/src/main/assets/models/`
+- Thay `PrototypeVisualEngine`; không sửa UI, DB, location, backend hoặc contract.
 
 ## API phải implement
 
-- `VisualEncoder.encode(ImageInput, roi) -> TraceResult<VisualEmbedding>`
-- `RecognitionApi.recognize(RecognizeRequest) -> TraceResult<RecognizeResponse>`
+```kotlin
+suspend fun VisualEncoder.encode(
+    image: ImageInput,
+    roi: NormalizedRect? = null,
+): TraceResult<VisualEmbedding>
 
-Thay hoàn toàn `PrototypeVisualEngine`; không thay contract.
+suspend fun RecognitionApi.recognize(
+    request: RecognizeRequest,
+): TraceResult<RecognizeResponse>
+```
 
-## Dữ liệu được đọc
-
-`RecognizeRequest.references`. Không truy cập database, location hoặc backend.
+`RecognizeRequest` chứa ảnh mới và toàn bộ `ObjectReference`; module không tự đọc database.
 
 ## Yêu cầu
 
-- Chạy model bằng TensorFlow Lite ngoài UI isolate.
-- Tìm candidate region, tạo embedding và so khớp reference.
-- L2-normalize embedding; khóa model name/version và dimensions.
-- Có threshold từ chối `UNKNOWN`.
-- Không ép mọi ảnh về object gần nhất.
-- Bounding box dùng tọa độ chuẩn hóa `0..1`.
+- Chạy model on-device bằng LiteRT, không block main thread.
+- Tiền xử lý phải áp dụng JPEG rotation, resize, normalization đúng metadata model.
+- Khi enrollment có ROI: encode đúng crop. Khi recognition không có ROI: sinh candidate region bằng detector tổng quát hoặc chiến lược multi-crop đã đo kiểm.
+- L2-normalize embedding và cosine similarity với reference.
+- Khóa `modelName`, `modelVersion`, dimensions; model mismatch trả lỗi hoặc bỏ candidate có kiểm soát.
+- Có threshold từ chối `UNKNOWN`; tuyệt đối không ép ảnh nào cũng khớp object gần nhất.
+- Detection trả bounding box chuẩn hóa `0..1`, similarity `0..1`.
+- Model phải có license cho phép phân phối ứng dụng; ghi nguồn và license trong module README.
 
 ## Nghiệm thu
 
-- Dataset: tối thiểu 10 đồ vật, 5 ảnh test/đồ vật và 20 ảnh unknown.
-- Precision `>= 85%`, recall `>= 75%` trên dataset đã khóa.
-- False positive của tập unknown `<= 10%`.
-- Median processing time `<= 1.5 giây/ảnh` trên thiết bị test của nhóm.
-- Có report CSV và unit test cho cosine, threshold, model mismatch.
+- Dataset khóa: tối thiểu 10 đồ vật, 1 ảnh enrollment, 5 ảnh test/object và 20 ảnh unknown.
+- Precision `>= 85%`, recall `>= 75%`, false-positive unknown `<= 10%`.
+- Median `<= 1.5 giây/ảnh`, peak RAM `<= 350 MB` trên thiết bị nhóm chọn.
+- Xuất `evaluation.csv`: sample, expected, predicted, similarity, latency.
+- Unit test: cosine, L2, threshold, model mismatch; instrumentation test load/infer model.
+- Chạy xanh:
+
+```powershell
+.\gradlew.bat :feature:recognition:testDebugUnitTest
+```

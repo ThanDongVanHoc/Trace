@@ -1,0 +1,381 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "5a22c9ad5c3f7ca4934be18cadb28530",
+    "entities": [
+      {
+        "tableName": "local_objects",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`object_id` TEXT NOT NULL, `encrypted_tag` BLOB NOT NULL, `reference_revision` INTEGER NOT NULL, `created_at_epoch_ms` INTEGER NOT NULL, `updated_at_epoch_ms` INTEGER NOT NULL, PRIMARY KEY(`object_id`))",
+        "fields": [
+          {
+            "fieldPath": "objectId",
+            "columnName": "object_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encryptedTag",
+            "columnName": "encrypted_tag",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceRevision",
+            "columnName": "reference_revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "created_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updated_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "object_id"
+          ]
+        }
+      },
+      {
+        "tableName": "secure_assets",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`asset_id` TEXT NOT NULL, `type` TEXT NOT NULL, `relative_path` TEXT NOT NULL, `nonce` BLOB NOT NULL, `mime_type` TEXT NOT NULL, `created_at_epoch_ms` INTEGER NOT NULL, PRIMARY KEY(`asset_id`))",
+        "fields": [
+          {
+            "fieldPath": "assetId",
+            "columnName": "asset_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relativePath",
+            "columnName": "relative_path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nonce",
+            "columnName": "nonce",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mime_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "created_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "asset_id"
+          ]
+        }
+      },
+      {
+        "tableName": "local_object_references",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`reference_id` TEXT NOT NULL, `object_id` TEXT NOT NULL, `image_asset_id` TEXT NOT NULL, `roi_left` REAL NOT NULL, `roi_top` REAL NOT NULL, `roi_right` REAL NOT NULL, `roi_bottom` REAL NOT NULL, `quality_score` REAL NOT NULL, `created_at_epoch_ms` INTEGER NOT NULL, PRIMARY KEY(`reference_id`), FOREIGN KEY(`object_id`) REFERENCES `local_objects`(`object_id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`image_asset_id`) REFERENCES `secure_assets`(`asset_id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "referenceId",
+            "columnName": "reference_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "objectId",
+            "columnName": "object_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageAssetId",
+            "columnName": "image_asset_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "roiLeft",
+            "columnName": "roi_left",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "roiTop",
+            "columnName": "roi_top",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "roiRight",
+            "columnName": "roi_right",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "roiBottom",
+            "columnName": "roi_bottom",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityScore",
+            "columnName": "quality_score",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "created_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "reference_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_local_object_references_object_id",
+            "unique": false,
+            "columnNames": [
+              "object_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_object_references_object_id` ON `${TABLE_NAME}` (`object_id`)"
+          },
+          {
+            "name": "index_local_object_references_image_asset_id",
+            "unique": false,
+            "columnNames": [
+              "image_asset_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_object_references_image_asset_id` ON `${TABLE_NAME}` (`image_asset_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "local_objects",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "object_id"
+            ],
+            "referencedColumns": [
+              "object_id"
+            ]
+          },
+          {
+            "table": "secure_assets",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "image_asset_id"
+            ],
+            "referencedColumns": [
+              "asset_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "local_reference_embeddings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`reference_id` TEXT NOT NULL, `ordinal` INTEGER NOT NULL, `encrypted_values` BLOB NOT NULL, `dimensions` INTEGER NOT NULL, `model_name` TEXT NOT NULL, `model_version` TEXT NOT NULL, PRIMARY KEY(`reference_id`, `ordinal`), FOREIGN KEY(`reference_id`) REFERENCES `local_object_references`(`reference_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "referenceId",
+            "columnName": "reference_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ordinal",
+            "columnName": "ordinal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encryptedValues",
+            "columnName": "encrypted_values",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dimensions",
+            "columnName": "dimensions",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelName",
+            "columnName": "model_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelVersion",
+            "columnName": "model_version",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "reference_id",
+            "ordinal"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_local_reference_embeddings_reference_id",
+            "unique": false,
+            "columnNames": [
+              "reference_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_reference_embeddings_reference_id` ON `${TABLE_NAME}` (`reference_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "local_object_references",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "reference_id"
+            ],
+            "referencedColumns": [
+              "reference_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "local_sightings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sighting_id` TEXT NOT NULL, `object_id` TEXT NOT NULL, `detected_at_epoch_ms` INTEGER NOT NULL, `encrypted_location` BLOB, `confidence` REAL NOT NULL, `evidence_asset_id` TEXT, `sync_status` TEXT NOT NULL, PRIMARY KEY(`sighting_id`), FOREIGN KEY(`object_id`) REFERENCES `local_objects`(`object_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "sightingId",
+            "columnName": "sighting_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "objectId",
+            "columnName": "object_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detectedAtEpochMillis",
+            "columnName": "detected_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encryptedLocation",
+            "columnName": "encrypted_location",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidenceAssetId",
+            "columnName": "evidence_asset_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "syncStatus",
+            "columnName": "sync_status",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sighting_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_local_sightings_object_id",
+            "unique": false,
+            "columnNames": [
+              "object_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_sightings_object_id` ON `${TABLE_NAME}` (`object_id`)"
+          },
+          {
+            "name": "index_local_sightings_object_id_detected_at_epoch_ms",
+            "unique": false,
+            "columnNames": [
+              "object_id",
+              "detected_at_epoch_ms"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_sightings_object_id_detected_at_epoch_ms` ON `${TABLE_NAME}` (`object_id`, `detected_at_epoch_ms`)"
+          },
+          {
+            "name": "index_local_sightings_sync_status",
+            "unique": false,
+            "columnNames": [
+              "sync_status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_sightings_sync_status` ON `${TABLE_NAME}` (`sync_status`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "local_objects",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "object_id"
+            ],
+            "referencedColumns": [
+              "object_id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5a22c9ad5c3f7ca4934be18cadb28530')"
+    ]
+  }
+}
