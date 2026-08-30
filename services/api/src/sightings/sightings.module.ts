@@ -9,5 +9,6 @@ import { SightingsService } from './sightings.service.js';
   imports: [TypeOrmModule.forFeature([SightingEntity]), ObjectsModule],
   controllers: [SightingsController],
   providers: [SightingsService],
+  exports: [SightingsService],
 })
 export class SightingsModule {}

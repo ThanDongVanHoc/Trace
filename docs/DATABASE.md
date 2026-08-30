@@ -18,7 +18,11 @@ local_objects 1 ── n local_object_references 1 ── n local_reference_embe
       └── n local_sightings     └── 1 secure_assets
 ```
 
-- Thành viên 1 dùng `ObjectStore` và `SecureAssetStore`.
-- Thành viên 2 không đọc database; reference được truyền trong request.
-- Thành viên 3 dùng `ObjectStore`, `SightingStore`, `SecureAssetStore`.
-- Thành viên 4 sở hữu DAO, transaction, encryption, migration và file lifecycle.
+- Android Enrollment adapter dùng `ObjectStore` và `SecureAssetStore`; HTTP harness của Thành viên 1 không đọc Room.
+- Android Recognition adapter không đọc database; reference được truyền trong request.
+- Android Memory adapter dùng `ObjectStore`, `SightingStore`, `SecureAssetStore`.
+- Android Secure Vault adapter sẽ sở hữu DAO, transaction, migration và file lifecycle khi tích hợp vào app.
+
+Các HTTP harness của bốn thành viên dùng contract backend riêng. Memory harness dùng
+PostgreSQL server; Vault harness hiện chỉ seal/open trong memory và không thay thế
+Room + Android Keystore của bản phát hành.

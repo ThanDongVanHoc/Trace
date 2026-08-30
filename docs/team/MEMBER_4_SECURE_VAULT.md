@@ -1,53 +1,61 @@
-# Thành viên 4 — Secure Local Vault
+# Thành viên 4 — Secure Vault API
 
 ## Mục tiêu
 
-Thay toàn bộ `InMemory*Store` bằng persistence Room và mã hóa dữ liệu nhạy cảm đúng chuẩn Android.
+Xây engine mã hóa AES-256-GCM có version key và AAD, phát hiện mọi sửa đổi dữ liệu,
+không làm lộ plaintext hoặc key. API dev cho phép seal/open bundle bằng Base64 để
+test trực tiếp bằng Swagger/Postman; tích hợp storage/app làm sau.
 
 ## Phạm vi code
 
-- Branch: `feature/android-secure-vault`
-- Sở hữu: `apps/android/feature/securevault/**`, migration/schema trong `apps/android/core/database/**`
-- Không sửa domain DTO, Recognition, Enrollment hoặc Memory.
+- Branch: `feature/api-secure-vault`
+- Sở hữu: `services/api/src/vault/**`
+- Không sửa auth, Enrollment, Recognition, Memory hoặc HTTP contract.
 
-## API phải implement
+## Chạy khi phát triển
 
-- `ObjectStore`
-- `SightingStore`
-- `SecureAssetStore`
+```powershell
+Set-Location services/api
+npm ci
+npm run start:dev
+```
 
-Room schema v1 đã có:
+Mở `http://localhost:3000/docs`, đăng nhập/Authorize, gọi `seal`, copy bundle trả
+về sang `open`, rồi thử sửa ciphertext, AAD, tag hoặc key version.
 
-- `local_objects`
-- `local_object_references`
-- `local_reference_embeddings`
-- `local_sightings`
-- `secure_assets`
+## HTTP contract
 
-Không thay tên bảng/cột nếu không có migration và schema JSON mới.
+```text
+POST /v1/vault/seal
+POST /v1/vault/open
+```
 
-## Yêu cầu
+`seal` nhận `plaintextBase64`, `associatedData`; trả algorithm, key version, nonce,
+ciphertext, authentication tag và warnings. `open` nhận bundle trên và chỉ trả
+plaintext khi authentication thành công.
 
-- AES-256-GCM; nonce ngẫu nhiên 12 byte và không lặp với cùng key.
-- Master key sinh trong Android Keystore, alias có version; không hard-code hoặc export key.
-- Mã hóa tag, embedding và location trước khi ghi Room.
-- Reference/evidence image ghi thành file ciphertext; DB chỉ giữ relative path, nonce và metadata.
-- Dùng AAD gắn ciphertext với `assetId`/record ID và version để chống tráo bản ghi.
-- Ghi file theo `temp → fsync → atomic rename`; crash không để file nửa chừng.
-- Tạo object + reference + embeddings trong một Room transaction.
-- Xóa object phải cascade reference/sighting và xóa mọi file asset liên quan.
-- Decrypt/tamper/wrong-key phải trả `CRYPTO_FAILURE`; không trả plaintext hỏng.
-- Không log key, nonce+ciphertext đầy đủ, tag, embedding, location hoặc token.
-- Auth token thuộc `core/network/KeystoreTokenStore`, không thay trong task này.
+Controller, validation, giới hạn payload và AES-GCM engine mẫu đã có. Thay
+`PrototypeVaultEngine` bằng engine production qua `VaultEngine`; không đổi DTO.
+
+## Yêu cầu kỹ thuật
+
+- AES-256-GCM, nonce ngẫu nhiên 12 byte, tag 16 byte; không lặp nonce cùng key.
+- Key 32 byte lấy từ secret provider, không hard-code/log/export; có `keyVersion`.
+- AAD bắt buộc và gắn với record/asset ID; đổi AAD phải decrypt thất bại.
+- Tamper, wrong key/version/tag trả cùng mã `CRYPTO_FAILURE`, không trả plaintext hỏng.
+- Hỗ trợ đọc key version cũ trong thời gian rotation; key mới chỉ dùng để encrypt.
+- Không log key, plaintext, ciphertext/tag đầy đủ hoặc token.
 
 ## Nghiệm thu
 
-- Copy DB/files ra ngoài không tìm thấy plaintext tag, location, embedding hoặc JPEG header.
-- Sửa 1 byte ciphertext/tag hoặc đổi AAD thì decrypt thất bại.
-- Test: round-trip, unique nonce 10.000 lần, tamper, wrong key, transaction rollback, restart app, delete cascade và orphan cleanup.
-- Commit schema `core/database/schemas/.../2.json` nếu tăng version và có migration test `1 → 2`.
+- Round-trip đúng; plaintext không xuất hiện trong ciphertext.
+- Test unique nonce ít nhất 10.000 lần, tamper từng thành phần, wrong key và AAD.
+- Restart với secret/key version cố định vẫn mở được bundle cũ.
+- Swagger/Postman seal → open thành công; sửa một byte nhận `CRYPTO_FAILURE`.
 - Chạy xanh:
 
 ```powershell
-.\gradlew.bat :feature:securevault:testDebugUnitTest :feature:securevault:connectedDebugAndroidTest
+npm test -- vault
+npm run lint
+npm run build
 ```

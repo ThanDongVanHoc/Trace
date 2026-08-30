@@ -14,6 +14,7 @@ Android app (Kotlin + Compose)
              │ HTTPS /v1
 NestJS API
   ├─ authentication + rotated sessions
+  ├─ four development HTTP harnesses
   ├─ object and sighting sync
   ├─ device registry
   └─ PostgreSQL outbox → FCM
@@ -21,7 +22,7 @@ NestJS API
          PostgreSQL
 ```
 
-Ảnh reference, evidence và embedding phải ở local theo mặc định. Backend chỉ đồng bộ tài khoản, metadata đồ vật và sighting. Upload ảnh lên cloud nằm ngoài scope cho đến khi có chính sách consent, retention và xóa dữ liệu.
+Ảnh reference, evidence và embedding phải ở local theo mặc định. Backend chỉ đồng bộ tài khoản, metadata đồ vật và sighting. Các route `/enrollments`, `/recognitions`, `/memory` và `/vault` hiện là HTTP harness để bốn thành viên gửi request và phát triển độc lập; Android chưa gọi chúng và server không ghi JPEG upload xuống disk. Việc dùng chúng trong bản phát hành chỉ được quyết định sau khi review tích hợp, consent, retention và xóa dữ liệu.
 
 ## Dependency rule
 
@@ -37,7 +38,7 @@ feature/securevault ───> core/database
 - Feature module không import implementation của feature module khác.
 - Giao tiếp chéo module chỉ dùng interface và DTO trong `core/contracts`.
 - Hilt module là composition root; thay implementation không yêu cầu sửa Compose UI.
-- `core/database/schemas/` được commit. Thay schema phải có migration và review của Thành viên 4.
+- `core/database/schemas/` được commit. Thay schema phải có migration và review riêng ở giai đoạn tích hợp Android.
 
 ## Luồng chính
 

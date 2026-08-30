@@ -1,43 +1,58 @@
-# Thành viên 3 — Last-seen Memory
+# Thành viên 3 — Last-seen Memory API
 
 ## Mục tiêu
 
-Ghi nhận lần xuất hiện đã được Recognition xác nhận và trả lời đồ vật được thấy lần cuối ở đâu, lúc nào. Người dùng Find bằng tag/object ID; Find không nhận ảnh.
+Ghi một lần xuất hiện đã được Recognition xác nhận và trả lời đồ vật được thấy lần
+cuối ở đâu, lúc nào. Người dùng tìm bằng tag hoặc object UUID; Find không nhận ảnh.
 
 ## Phạm vi code
 
-- Branch: `feature/android-memory`
-- Sở hữu: `apps/android/feature/memory/**`
-- Không gọi Recognition, CameraX, Room DAO hoặc backend trực tiếp.
+- Branch: `feature/api-memory`
+- Sở hữu: `services/api/src/memory/**`
+- Không sửa Recognition, camera, auth, database entity hoặc HTTP contract.
 
-## API phải implement
+## Chạy khi phát triển
 
-```kotlin
-suspend fun MemoryApi.recordSighting(request: RecordSightingRequest): TraceResult<RecordSightingResponse>
-suspend fun MemoryApi.findLastSeen(objectId: String): TraceResult<FindLastSeenResponse>
-suspend fun MemoryApi.getTimeline(objectId: String, limit: Int): TraceResult<List<Sighting>>
+```powershell
+Set-Location services/api
+npm ci
+npm run start:dev
 ```
 
-Chỉ được gọi `ObjectStore`, `SightingStore`, `SecureAssetStore`. Location đã được app truyền qua `RecordSightingRequest` và có thể `null`.
+Mở Swagger tại `http://localhost:3000/docs`. Tạo object bằng Enrollment/Object API
+một lần, sau đó test các endpoint Memory; backend và database tự reload/kết nối.
 
-## Yêu cầu
+## HTTP contract
 
-- Chỉ ghi khi object tồn tại, confidence hợp lệ và kết quả upstream là `MATCHED`.
-- Lưu thời gian UTC, GPS accuracy và evidence tùy chọn; không có quyền GPS vẫn phải ghi sighting.
-- Dedup cùng object trong 2 phút: nếu có hai location thì khoảng cách phải dưới 30 m; nếu thiếu GPS thì dedup theo thời gian.
-- Dedup cập nhật timestamp/location/confidence của bản ghi cũ, không tạo ID mới.
-- `findLastSeen(objectId)` không có sighting trả `lastSeen = null`, không trả lỗi.
-- Timeline mới nhất trước, limit `1..100`.
-- Bản ghi mới có `SyncStatus.PENDING`; worker tích hợp backend do app/integration đảm nhiệm.
-- Nếu ghi evidence thành công nhưng ghi sighting lỗi, phải xóa evidence.
+```text
+POST /v1/memory/sightings
+POST /v1/memory/find
+GET  /v1/memory/objects/{objectId}/timeline?limit=50
+```
+
+`/sightings` nhận object UUID, UTC ISO time, confidence, bounding box/location và
+evidence asset UUID tùy chọn. `/find` chỉ nhận `{ "query": "Balo của tôi" }`.
+
+Controller, validation, object/sighting store adapter và Swagger đã có. Thay
+`PrototypeMemoryEngine` bằng logic thật qua `MemoryEngine`; không đổi DTO/controller.
+
+## Yêu cầu kỹ thuật
+
+- Chỉ ghi object tồn tại và confidence `0..1`; location có thể `null`.
+- Dedup cùng object trong 2 phút; nếu có GPS thì khoảng cách phải dưới 30 m.
+- Dedup cập nhật record cũ, không sinh ID mới.
+- Find không có sighting trả `lastSeen: null`; timeline mới nhất trước.
+- Limit `1..100`; thời gian lưu UTC; không log tag/location.
 
 ## Nghiệm thu
 
-- Unit test: latest theo UTC, empty result, GPS null, dedup thời gian, dedup khoảng cách, ngoài cửa sổ và timeline limit.
-- Test rollback evidence khi store lỗi.
-- Không dùng Android framework trong domain logic để test JVM nhanh.
+- Unit test latest, empty, GPS null, dedup thời gian/khoảng cách và timeline limit.
+- HTTP test record JSON, find bằng tag và timeline.
+- Swagger/Postman không gửi ảnh vào Find và vẫn nhận đúng kết quả.
 - Chạy xanh:
 
 ```powershell
-.\gradlew.bat :feature:memory:testDebugUnitTest
+npm test -- memory
+npm run lint
+npm run build
 ```

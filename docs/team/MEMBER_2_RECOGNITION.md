@@ -1,50 +1,61 @@
-# Thành viên 2 — One-shot Recognition
+# Thành viên 2 — One-shot Recognition API
 
 ## Mục tiêu
 
-Nhận diện một đồ vật bất kỳ đã được người dùng đăng ký từ một ảnh mới. Hệ thống phải trả `MATCHED` hoặc `UNKNOWN`, không phải classifier với danh sách đồ vật cố định.
+Nhận một JPEG mới và danh sách reference embedding, sau đó trả `MATCHED` hoặc
+`UNKNOWN`. Không xây classifier với danh sách đồ vật cố định và không ép ảnh nào
+cũng phải khớp.
 
 ## Phạm vi code
 
-- Branch: `feature/android-recognition`
-- Sở hữu: `apps/android/feature/recognition/**`, model tại `feature/recognition/src/main/assets/models/`
-- Thay `PrototypeVisualEngine`; không sửa UI, DB, location, backend hoặc contract.
+- Branch: `feature/api-recognition`
+- Sở hữu: `services/api/src/recognitions/**`
+- Không sửa auth, Enrollment, Memory, Vault, Android hoặc HTTP contract.
 
-## API phải implement
+## Chạy khi phát triển
 
-```kotlin
-suspend fun VisualEncoder.encode(
-    image: ImageInput,
-    roi: NormalizedRect? = null,
-): TraceResult<VisualEmbedding>
-
-suspend fun RecognitionApi.recognize(
-    request: RecognizeRequest,
-): TraceResult<RecognizeResponse>
+```powershell
+Set-Location services/api
+npm ci
+npm run start:dev
 ```
 
-`RecognizeRequest` chứa ảnh mới và toàn bộ `ObjectReference`; module không tự đọc database.
+Mở `http://localhost:3000/docs`, đăng ký/đăng nhập, bấm **Authorize**, rồi gửi
+request trực tiếp vào API của mình. Backend tự reload khi lưu code.
 
-## Yêu cầu
+## HTTP contract
 
-- Chạy model on-device bằng LiteRT, không block main thread.
-- Tiền xử lý phải áp dụng JPEG rotation, resize, normalization đúng metadata model.
-- Khi enrollment có ROI: encode đúng crop. Khi recognition không có ROI: sinh candidate region bằng detector tổng quát hoặc chiến lược multi-crop đã đo kiểm.
-- L2-normalize embedding và cosine similarity với reference.
-- Khóa `modelName`, `modelVersion`, dimensions; model mismatch trả lỗi hoặc bỏ candidate có kiểm soát.
-- Có threshold từ chối `UNKNOWN`; tuyệt đối không ép ảnh nào cũng khớp object gần nhất.
-- Detection trả bounding box chuẩn hóa `0..1`, similarity `0..1`.
-- Model phải có license cho phép phân phối ứng dụng; ghi nguồn và license trong module README.
+```text
+POST /v1/recognitions
+Authorization: Bearer <accessToken>
+Content-Type: multipart/form-data
+```
+
+Input: `image` JPEG, `candidates` là JSON array chứa UUID, model name/version và
+embedding; thêm `minimumSimilarity`, `maximumResults`, `rotationDegrees` tùy chọn.
+Output: detections, processing time, model version và warnings.
+
+Upload, validation và Swagger đã có. Thay `PrototypeRecognitionEngine` bằng engine
+thật qua `RecognitionEngine`; không đổi controller/DTO.
+
+## Yêu cầu kỹ thuật
+
+- Decode rotation, resize và normalize đúng metadata model.
+- Encode query image; L2-normalize và cosine similarity với candidate embeddings.
+- Kiểm tra model name/version/dimensions; xử lý mismatch có kiểm soát.
+- Có threshold `UNKNOWN`; detection hợp lệ phải có similarity `0..1`.
+- Không log ảnh hoặc embedding; model phải có license cho phép sử dụng.
 
 ## Nghiệm thu
 
-- Dataset khóa: tối thiểu 10 đồ vật, 1 ảnh enrollment, 5 ảnh test/object và 20 ảnh unknown.
+- Dataset khóa: ít nhất 10 đồ vật, 5 ảnh test/object và 20 ảnh unknown.
 - Precision `>= 85%`, recall `>= 75%`, false-positive unknown `<= 10%`.
-- Median `<= 1.5 giây/ảnh`, peak RAM `<= 350 MB` trên thiết bị nhóm chọn.
-- Xuất `evaluation.csv`: sample, expected, predicted, similarity, latency.
-- Unit test: cosine, L2, threshold, model mismatch; instrumentation test load/infer model.
+- Unit test cosine, L2, threshold, mismatch và invalid image.
+- Swagger/Postman gửi request hợp lệ và nhận HTTP `201`.
 - Chạy xanh:
 
 ```powershell
-.\gradlew.bat :feature:recognition:testDebugUnitTest
+npm test -- recognitions
+npm run lint
+npm run build
 ```

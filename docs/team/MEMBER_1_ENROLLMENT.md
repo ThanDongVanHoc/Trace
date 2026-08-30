@@ -1,51 +1,61 @@
-# Thành viên 1 — One-shot Enrollment
+# Thành viên 1 — One-shot Enrollment API
 
 ## Mục tiêu
 
-Từ đúng một ảnh client chụp, ROI người dùng khoanh và tag, tạo `ObjectReference` mà module Recognition có thể dùng ngay.
+Nhận đúng một JPEG, ROI người dùng khoanh và tag qua HTTP; kiểm tra chất lượng,
+crop/augmentation và tạo các embedding tương thích cho một object reference.
 
 ## Phạm vi code
 
-- Branch: `feature/android-enrollment`
-- Sở hữu: `apps/android/feature/enrollment/**`
-- Không sửa Compose UI, database, crypto, Recognition hoặc `core/contracts`.
+- Branch: `feature/api-enrollment`
+- Sở hữu: `services/api/src/enrollments/**`
+- Không sửa auth, object API, Android, database hoặc HTTP contract đã chốt.
 
-## API phải implement
+## Chạy khi phát triển
 
-```kotlin
-suspend fun EnrollmentApi.enroll(request: EnrollRequest): TraceResult<EnrollResponse>
+```powershell
+Set-Location services/api
+npm ci
+npm run start:dev
 ```
 
-Input: `tag`, JPEG `ImageInput`, `NormalizedRect roi`.
+Docker Desktop phải đang chạy. Lệnh trên tự tạo `.env`, bật PostgreSQL và chạy
+NestJS watch mode. Mở `http://localhost:3000/docs` để gửi request.
 
-Output: `objectId`, `referenceId`, quality, số embedding và warning.
+## HTTP contract
 
-Chỉ được gọi:
+```text
+POST /v1/enrollments
+Authorization: Bearer <accessToken>
+Content-Type: multipart/form-data
+```
 
-- `VisualEncoder.encode(image, roi)`
-- `SecureAssetStore.write/delete`
-- `ObjectStore.create`
+Input: `image` JPEG, `tag`, `roiLeft`, `roiTop`, `roiRight`, `roiBottom`, và
+`rotationDegrees` tùy chọn. Output: `objectId`, `referenceId`, `qualityScore`,
+`embeddingCount`, `warnings`.
 
-Không đọc Room/DAO trực tiếp.
+Controller, upload, validation, Swagger và lưu object metadata đã được dựng sẵn.
+Chỉ thay `PrototypeEnrollmentEngine` bằng engine thật qua interface
+`EnrollmentEngine`; không đổi controller/DTO để tránh phá tích hợp.
 
-## Yêu cầu
+## Yêu cầu kỹ thuật
 
-- Validate tag dài `1..80`, ROI nằm trong `0..1`, diện tích ROI tối thiểu `1%` ảnh.
-- Chuẩn hóa orientation trước khi crop; crop lệch tối đa 3 px so với ROI kỳ vọng.
-- Tính quality và từ chối ảnh rỗng, quá tối, quá mờ hoặc ROI quá nhỏ bằng đúng `TraceErrorCode`.
-- Tạo 3–5 augmentation hợp lệ: crop nhẹ, brightness/contrast nhẹ; không lật nếu làm đổi đặc trưng đồ vật.
-- Gọi `VisualEncoder` cho từng ảnh hợp lệ; mọi embedding phải cùng model/version/dimensions.
-- Lưu asset trước, sau đó object/reference; nếu bước sau lỗi phải xóa asset đã tạo.
-- Không log ảnh, embedding hoặc tag.
+- Chuẩn hóa orientation rồi crop; lệch tối đa 3 px so với ROI kỳ vọng.
+- Từ chối ảnh rỗng, quá tối, quá mờ hoặc ROI không đạt bằng HTTP `400` rõ ràng.
+- Tạo 3–5 augmentation nhẹ từ đúng một ảnh; không lật nếu làm đổi đặc trưng.
+- Mọi embedding phải cùng model name, version và dimensions.
+- Không ghi ảnh, embedding hoặc tag vào log.
+- Không giữ ảnh upload trên disk; xử lý từ buffer trong request.
 
-## Nghiệm thu
+## Test và nghiệm thu
 
-- Ảnh + ROI + tag hợp lệ tạo đúng một object và một reference.
-- Invalid input không ghi dữ liệu.
-- Lỗi encoder/store không để asset mồ côi.
-- Unit test: valid ROI, rotation crop, từng quality rejection và rollback.
+- Unit test: rotation/crop, từng quality rejection, augmentation và compatibility.
+- HTTP test: multipart hợp lệ, thiếu ảnh, sai MIME, ROI sai và file quá 10 MiB.
+- Swagger/Postman gửi một request hợp lệ và nhận HTTP `201`.
 - Chạy xanh:
 
 ```powershell
-.\gradlew.bat :feature:enrollment:testDebugUnitTest
+npm test -- enrollments
+npm run lint
+npm run build
 ```

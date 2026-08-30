@@ -1,6 +1,6 @@
 # TRACE
 
-TRACE là ứng dụng Android local-first giúp người dùng ghi nhớ đồ vật đã gắn tag được nhìn thấy lần cuối ở đâu và khi nào. Nhánh `android` là prototype native có thể build thành APK, đồng thời chia bốn bài toán kỹ thuật thành bốn Gradle module độc lập để bốn thành viên phát triển song song.
+TRACE là ứng dụng Android local-first giúp người dùng ghi nhớ đồ vật đã gắn tag được nhìn thấy lần cuối ở đâu và khi nào. Nhánh `android` có prototype native build được thành APK và backend HTTP để từng bài toán kỹ thuật có thể phát triển, gửi request và kiểm thử độc lập trước khi nối vào app.
 
 ## Công nghệ
 
@@ -20,27 +20,29 @@ apps/android/
   core/contracts/         DTO và interface bất biến giữa bốn module
   core/database/          Room schema v1
   core/network/           REST client, JWT refresh, Keystore token store
-  feature/enrollment/     Thành viên 1
-  feature/recognition/    Thành viên 2
-  feature/memory/         Thành viên 3
-  feature/securevault/    Thành viên 4
-services/api/             NestJS + PostgreSQL backend
+  feature/enrollment/     Adapter Enrollment prototype phía Android
+  feature/recognition/    Adapter Recognition prototype phía Android
+  feature/memory/         Adapter Memory prototype phía Android
+  feature/securevault/    Adapter Vault prototype phía Android
+services/api/             NestJS + PostgreSQL; 4 technical dev APIs
 docs/team/                Requirement giao cho từng thành viên
 ```
 
-`PrototypeVisualEngine` và các `InMemory*Store` chỉ là adapter giúp tích hợp UI ngay từ đầu. Chúng không phải model nhận diện hay kho mã hóa dùng cho bản phát hành; Thành viên 2 và 4 có trách nhiệm thay chúng mà không đổi `core/contracts`.
+`PrototypeVisualEngine` và các `InMemory*Store` chỉ là adapter giúp UI hiện tại chạy được. Bốn thành viên phát triển các engine HTTP độc lập ở backend; việc thay adapter Android và nối bốn API vào app được thực hiện ở giai đoạn tích hợp sau.
 
 ## Chạy backend
 
 Yêu cầu: Node.js 24, Docker Desktop.
 
 ```powershell
-Copy-Item .env.example .env
-docker compose up -d
 Set-Location services/api
 npm ci
 npm run start:dev
 ```
+
+Chỉ cần Docker Desktop đang chạy. `npm run start:dev` tự tạo `.env` nếu thiếu,
+bật PostgreSQL, chờ database healthy rồi chạy NestJS hot reload.
+Database dev dùng cổng host `55432` để không đụng PostgreSQL cài sẵn trên máy.
 
 Swagger: `http://localhost:3000/docs`
 

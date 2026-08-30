@@ -8,10 +8,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module.js';
 import { AccessTokenGuard } from './auth/guards/access-token.guard.js';
 import { DevicesModule } from './devices/devices.module.js';
+import { EnrollmentsModule } from './enrollments/enrollments.module.js';
 import { HealthController } from './health/health.controller.js';
+import { MemoryModule } from './memory/memory.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { ObjectsModule } from './objects/objects.module.js';
+import { RecognitionsModule } from './recognitions/recognitions.module.js';
 import { SightingsModule } from './sightings/sightings.module.js';
+import { VaultModule } from './vault/vault.module.js';
 
 @Module({
   imports: [
@@ -37,9 +41,13 @@ import { SightingsModule } from './sightings/sightings.module.js';
     }),
     AuthModule,
     DevicesModule,
+    EnrollmentsModule,
+    MemoryModule,
     ObjectsModule,
+    RecognitionsModule,
     SightingsModule,
     NotificationsModule,
+    VaultModule,
   ],
   controllers: [HealthController],
   providers: [

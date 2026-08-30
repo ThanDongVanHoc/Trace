@@ -2,6 +2,11 @@
 
 Nguồn chuẩn duy nhất: `apps/android/core/contracts/src/main/kotlin/com/traceapp/core/contracts/`.
 
+Đây là contract runtime Android hiện tại. Để cả bốn thành viên phát triển độc lập
+bằng Swagger/Postman, backend có các HTTP contract `/enrollments`, `/recognitions`,
+`/memory`, `/vault` cùng bốn engine port tương ứng. Các endpoint chưa được nối vào
+Android; khi tích hợp phải viết adapter mà không tự ý thay đổi public contract.
+
 ## API
 
 ```kotlin
@@ -28,9 +33,9 @@ interface MemoryApi {
 
 | Interface | Owner production | Bảng/dữ liệu |
 |---|---|---|
-| `ObjectStore` | Thành viên 4 | `local_objects`, `local_object_references`, `local_reference_embeddings` |
-| `SightingStore` | Thành viên 4 | `local_sightings` |
-| `SecureAssetStore` | Thành viên 4 | `secure_assets`, file ciphertext |
+| `ObjectStore` | Android integration | `local_objects`, `local_object_references`, `local_reference_embeddings` |
+| `SightingStore` | Android integration | `local_sightings` |
+| `SecureAssetStore` | Android integration | `secure_assets`, file ciphertext |
 
 Enrollment chỉ gọi `VisualEncoder`, `ObjectStore`, `SecureAssetStore`. Recognition chỉ nhận `ImageInput` và `ObjectReference[]`, không đọc DB. Memory chỉ gọi Store và nhận location từ app. Secure Vault implement Store, không chứa logic nhận diện.
 
