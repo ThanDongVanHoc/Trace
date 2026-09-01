@@ -1,14 +1,21 @@
-# Quy tắc tích hợp
+# Phân công kỹ thuật
 
-1. Mỗi người chỉ sửa phạm vi được giao trên branch riêng.
-2. Không tự đổi public HTTP/Kotlin contract; đề xuất thay đổi bằng PR riêng trước.
-3. Module kỹ thuật chỉ phụ thuộc contract/port đã chốt, không đọc dữ liệu của module khác trực tiếp.
-4. PR phải kèm test, số đo nghiệm thu và chạy được lệnh kiểm tra ghi trong requirement.
-5. Không commit ảnh cá nhân, key, token, model chưa rõ license hoặc `google-services.json`.
+Mọi thành viên dùng cùng quy trình:
 
-| Thành viên | Branch | Module |
+```bat
+dev.bat
+```
+
+Mở `http://localhost:8080/docs`, gọi API của mình, sửa Kotlin và gọi lại. Không cần
+Android Studio, Docker, database server hoặc token. SQLite nằm tại
+`playground/data/trace-dev.db` và được tạo tự động.
+
+| Thành viên | Branch | Chỉ sửa module |
 |---|---|---|
-| 1 | `feature/api-enrollment` | `services/api/src/enrollments` |
-| 2 | `feature/api-recognition` | `services/api/src/recognitions` |
-| 3 | `feature/api-memory` | `services/api/src/memory` |
-| 4 | `feature/api-secure-vault` | `services/api/src/vault` |
+| 1 | `feature/kotlin-enrollment` | `playground/member1-enrollment` |
+| 2 | `feature/kotlin-recognition` | `playground/member2-recognition` |
+| 3 | `feature/kotlin-memory` | `playground/member3-memory` |
+| 4 | `feature/kotlin-secure-vault` | `playground/member4-vault` |
+
+Không đổi file trong `contracts`, `storage` hoặc `dev-server` nếu chưa thống nhất
+với team. PR phải có test cho logic mới và chạy xanh `test.bat memberN`.

@@ -1,77 +1,66 @@
 # TRACE
 
-TRACE là ứng dụng Android local-first giúp người dùng ghi nhớ đồ vật đã gắn tag được nhìn thấy lần cuối ở đâu và khi nào. Nhánh `android` có prototype native build được thành APK và backend HTTP để từng bài toán kỹ thuật có thể phát triển, gửi request và kiểm thử độc lập trước khi nối vào app.
+TRACE giúp người dùng ghi nhớ đồ vật đã được gắn tag và tìm lại lần cuối chúng
+xuất hiện ở đâu, khi nào.
 
-## Công nghệ
+Ưu tiên hiện tại của team là giải bốn bài toán kỹ thuật bằng Kotlin. Thành viên
+không cần Android Studio, Android SDK, Docker, Node.js, JWT hay PostgreSQL.
 
-- Android API 24+, Kotlin 2.3.21, Jetpack Compose, Material 3.
-- CameraX, Fused Location Provider, Firebase Cloud Messaging.
-- Hilt, Coroutines, Room + KSP, Retrofit + OkHttp.
-- Android Keystore cho token đăng nhập.
-- NestJS REST API, PostgreSQL, JWT access/refresh rotation, notification outbox.
+## Bắt đầu trong hai bước
 
-Các phiên bản Android được khóa trong `apps/android/gradle/libs.versions.toml`. Compose/Hilt/Lifecycle được giữ ở dòng tương thích AGP 8.13 và compile SDK 36; không nâng riêng lẻ nếu chưa chạy lại toàn bộ CI.
+Yêu cầu duy nhất: Git và JDK 21 LTS.
 
-## Cấu trúc
+```bat
+git clone https://github.com/ThanDongVanHoc/Trace.git
+cd Trace
+dev.bat
+```
+
+Lần đầu Gradle tự tải dependency, SQLite tự tạo database. Sau đó mở:
+
+- Swagger: `http://localhost:8080/docs`
+- Database: `playground/data/trace-dev.db`
+- Ảnh thử: `playground/data/blobs/`
+
+Không có đăng nhập trong playground. Khi sửa Kotlin, watcher tự biên dịch và Ktor
+nạp lại code. Nếu code không compile, xem `playground/data/compile-watch-error.log`.
+
+## Bốn module
+
+| Thành viên | File chính | Test |
+|---|---|---|
+| 1 — Enrollment | `playground/member1-enrollment/**/EnrollmentAlgorithm.kt` | `test.bat member1` |
+| 2 — Recognition | `playground/member2-recognition/**/RecognitionAlgorithm.kt` | `test.bat member2` |
+| 3 — Memory | `playground/member3-memory/**/MemoryAlgorithm.kt` | `test.bat member3` |
+| 4 — Secure Vault | `playground/member4-vault/**/VaultAlgorithm.kt` | `test.bat member4` |
+
+Chạy toàn bộ kiểm tra:
+
+```bat
+test.bat
+```
+
+## Kiến trúc playground
 
 ```text
-apps/android/
-  app/                    Compose UI, CameraX, location, FCM, composition root
-  core/contracts/         DTO và interface bất biến giữa bốn module
-  core/database/          Room schema v1
-  core/network/           REST client, JWT refresh, Keystore token store
-  feature/enrollment/     Adapter Enrollment prototype phía Android
-  feature/recognition/    Adapter Recognition prototype phía Android
-  feature/memory/         Adapter Memory prototype phía Android
-  feature/securevault/    Adapter Vault prototype phía Android
-services/api/             NestJS + PostgreSQL; 4 technical dev APIs
-docs/team/                Requirement giao cho từng thành viên
+Swagger / Postman
+        |
+        v
+Ktor dev-server             Chỉ là test harness
+        |
+        +--> member1-enrollment
+        +--> member2-recognition
+        +--> member3-memory ----> SQLite file
+        +--> member4-vault
+        |
+        +--> contracts           Request/response/interface cố định
 ```
 
-`PrototypeVisualEngine` và các `InMemory*Store` chỉ là adapter giúp UI hiện tại chạy được. Bốn thành viên phát triển các engine HTTP độc lập ở backend; việc thay adapter Android và nối bốn API vào app được thực hiện ở giai đoạn tích hợp sau.
+HTTP và SQLite đã được nối sẵn. Thành viên chỉ sửa thuật toán và test trong module
+của mình. Prototype hiện tại chứng minh pipeline chạy được, không phải lời giải cuối.
 
-## Chạy backend
+`apps/android/` và `services/api/` vẫn được giữ cho giai đoạn sản phẩm. Playground
+không phải production backend; sau khi bốn bài toán đạt tiêu chí, AI/team integration
+sẽ chuyển hoặc viết lại implementation cho Android.
 
-Yêu cầu: Node.js 24, Docker Desktop.
-
-```powershell
-Set-Location services/api
-npm ci
-npm run start:dev
-```
-
-Chỉ cần Docker Desktop đang chạy. `npm run start:dev` tự tạo `.env` nếu thiếu,
-bật PostgreSQL, chờ database healthy rồi chạy NestJS hot reload.
-Database dev dùng cổng host `55432` để không đụng PostgreSQL cài sẵn trên máy.
-
-Swagger: `http://localhost:3000/docs`
-
-Health: `http://localhost:3000/v1/health`
-
-## Chạy Android
-
-Yêu cầu: Android Studio, JDK 17, Android SDK Platform 36 và Build Tools 35.0.0.
-
-```powershell
-Set-Location apps/android
-.\gradlew.bat installDebug -PTRACE_API_BASE_URL=http://10.0.2.2:3000/v1/
-```
-
-`10.0.2.2` là máy host nhìn từ Android Emulator. Khi dùng điện thoại thật, thay bằng IP LAN của máy chạy backend. Release build phải dùng HTTPS.
-
-Để bật push notification, đặt `google-services.json` vào `apps/android/app/` và cấu hình `FIREBASE_SERVICE_ACCOUNT_JSON` ở backend. File secret này đã bị Git bỏ qua.
-
-## Kiểm tra
-
-```powershell
-Set-Location apps/android
-.\gradlew.bat testDebugUnitTest lintDebug assembleDebug
-
-Set-Location ../../services/api
-npm ci
-npm run build
-npm run lint
-npm test
-```
-
-APK debug nằm tại `apps/android/app/build/outputs/apk/debug/app-debug.apk`.
+Requirement ngắn của từng người nằm trong `docs/team/`.

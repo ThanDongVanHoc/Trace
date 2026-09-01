@@ -20,6 +20,7 @@ coverage/
 .gradle/
 build/
 **/build/
+playground/data/
 local.properties
 captures/
 .externalNativeBuild/
