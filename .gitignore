@@ -18,11 +18,16 @@ coverage/
 
 # Android / Gradle
 .gradle/
-build/
 **/build/
-playground/data/
+playground/data/*
+!playground/data/models/
+!playground/data/models/**
+!playground/data/samples/
+!playground/data/samples/**
+!playground/data/trace-dev.db
+!playground/data/blobs/
+!playground/data/blobs/**
 local.properties
-captures/
 .externalNativeBuild/
 .cxx/
 
