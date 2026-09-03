@@ -2,9 +2,9 @@ package com.traceapp.android.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.traceapp.core.network.AuthRepository
-import com.traceapp.core.network.AuthResult
-import com.traceapp.core.network.AuthUser
+import com.traceapp.core.auth.AuthRepository
+import com.traceapp.core.auth.AuthResult
+import com.traceapp.core.auth.AuthUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow

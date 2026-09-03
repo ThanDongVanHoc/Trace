@@ -58,9 +58,11 @@ class MemoryService @Inject constructor(
             }
         }
 
+        val sightingId = UUID.randomUUID().toString()
         val evidenceAssetId = request.evidenceImage?.let { image ->
             when (
                 val result = assetStore.write(
+                    ownerRecordId = sightingId,
                     type = SecureAssetType.SIGHTING_EVIDENCE,
                     plaintext = image.jpegBytes,
                     mimeType = "image/jpeg",
@@ -71,7 +73,7 @@ class MemoryService @Inject constructor(
             }
         }
         val sighting = Sighting(
-            sightingId = UUID.randomUUID().toString(),
+            sightingId = sightingId,
             objectId = request.objectId,
             detectedAtEpochMillis = request.detectedAtEpochMillis,
             location = request.location,

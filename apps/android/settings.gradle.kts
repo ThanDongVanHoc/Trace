@@ -20,7 +20,7 @@ include(
     ":app",
     ":core:contracts",
     ":core:database",
-    ":core:network",
+    ":core:auth",
     ":feature:enrollment",
     ":feature:recognition",
     ":feature:memory",

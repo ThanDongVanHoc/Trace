@@ -27,7 +27,7 @@ import com.traceapp.android.ui.home.HomeScreen
 import com.traceapp.android.ui.home.ObjectMemoryViewModel
 import com.traceapp.android.ui.profile.ProfileScreen
 import com.traceapp.android.ui.scan.ScanScreen
-import com.traceapp.core.network.AuthUser
+import com.traceapp.core.auth.AuthUser
 
 private enum class Destination(val label: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
@@ -46,8 +46,8 @@ fun TraceShell(
     var dataRevision by remember { mutableIntStateOf(0) }
     val objectState by objectViewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(dataRevision) {
-        if (dataRevision > 0) objectViewModel.refresh()
+    LaunchedEffect(user.id, dataRevision) {
+        objectViewModel.refresh()
     }
 
     Scaffold(

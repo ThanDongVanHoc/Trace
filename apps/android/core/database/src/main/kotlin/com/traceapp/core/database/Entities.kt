@@ -5,11 +5,13 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 
-@Entity(tableName = "local_objects")
+@Entity(tableName = "local_objects", indices = [Index("account_id")])
 data class LocalObjectEntity(
     @androidx.room.PrimaryKey
     @ColumnInfo(name = "object_id")
     val objectId: String,
+    @ColumnInfo(name = "account_id")
+    val accountId: String,
     @ColumnInfo(name = "encrypted_tag", typeAffinity = ColumnInfo.BLOB)
     val encryptedTag: ByteArray,
     @ColumnInfo(name = "reference_revision")
@@ -20,16 +22,28 @@ data class LocalObjectEntity(
     val updatedAtEpochMillis: Long,
 )
 
-@Entity(tableName = "secure_assets")
+@Entity(
+    tableName = "secure_assets",
+    indices = [Index("account_id"), Index("owner_record_id")],
+)
 data class SecureAssetEntity(
     @androidx.room.PrimaryKey
     @ColumnInfo(name = "asset_id")
     val assetId: String,
+    @ColumnInfo(name = "account_id")
+    val accountId: String,
+    @ColumnInfo(name = "owner_record_id")
+    val ownerRecordId: String,
     val type: String,
     @ColumnInfo(name = "relative_path")
     val relativePath: String,
     @ColumnInfo(name = "nonce", typeAffinity = ColumnInfo.BLOB)
     val nonce: ByteArray,
+    @ColumnInfo(name = "envelope_version")
+    val envelopeVersion: Int,
+    val algorithm: String,
+    @ColumnInfo(name = "key_id")
+    val keyId: String,
     @ColumnInfo(name = "mime_type")
     val mimeType: String,
     @ColumnInfo(name = "created_at_epoch_ms")

@@ -40,8 +40,15 @@ class EnrollmentService @Inject constructor(
             )
         }
 
+        val objectId = UUID.randomUUID().toString()
+        val referenceId = UUID.randomUUID().toString()
+        val embedding = when (val result = visualEncoder.encode(request.image, request.roi)) {
+            is TraceResult.Success -> result.value
+            is TraceResult.Failure -> return result
+        }
         val asset = when (
             val result = assetStore.write(
+                ownerRecordId = referenceId,
                 type = SecureAssetType.REFERENCE_IMAGE,
                 plaintext = request.image.jpegBytes,
                 mimeType = "image/jpeg",
@@ -50,16 +57,7 @@ class EnrollmentService @Inject constructor(
             is TraceResult.Success -> result.value
             is TraceResult.Failure -> return result
         }
-        val embedding = when (val result = visualEncoder.encode(request.image, request.roi)) {
-            is TraceResult.Success -> result.value
-            is TraceResult.Failure -> {
-                assetStore.delete(asset.assetId)
-                return result
-            }
-        }
 
-        val objectId = UUID.randomUUID().toString()
-        val referenceId = UUID.randomUUID().toString()
         val reference = ObjectReference(
             referenceId = referenceId,
             objectId = objectId,
@@ -67,7 +65,7 @@ class EnrollmentService @Inject constructor(
             imageAssetId = asset.assetId,
             roi = request.roi,
             embeddings = listOf(embedding),
-            qualityScore = BASELINE_QUALITY,
+            qualityScore = embedding.qualityScore,
             createdAtEpochMillis = System.currentTimeMillis(),
         )
         return when (val stored = objectStore.create(ObjectDraft(objectId, tag, reference))) {
@@ -77,7 +75,7 @@ class EnrollmentService @Inject constructor(
                     referenceId = referenceId,
                     qualityScore = reference.qualityScore,
                     embeddingCount = reference.embeddings.size,
-                    warnings = listOf("Prototype encoder đang được dùng; Thành viên 2 sẽ thay model thật."),
+                    warnings = emptyList(),
                 ),
             )
             is TraceResult.Failure -> {
@@ -89,6 +87,5 @@ class EnrollmentService @Inject constructor(
 
     private companion object {
         const val MINIMUM_ROI_AREA = 0.01f
-        const val BASELINE_QUALITY = 0.5f
     }
 }

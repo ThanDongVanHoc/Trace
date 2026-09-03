@@ -1,66 +1,76 @@
-# TRACE
+# TRACE — Android on-device
 
-TRACE giúp người dùng ghi nhớ đồ vật đã được gắn tag và tìm lại lần cuối chúng
-xuất hiện ở đâu, khi nào.
+TRACE giúp người dùng gắn tag cho đồ vật bằng một ảnh, nhận diện lại đồ vật trong
+những lần chụp sau và xem nơi/thời điểm xuất hiện gần nhất. Bản trong nhánh
+`final` là ứng dụng Android độc lập: camera, model ML, database, đăng nhập cục bộ,
+mã hóa và thông báo đều chạy trên điện thoại; không cần backend, Docker hay mạng.
 
-Ưu tiên hiện tại của team là giải bốn bài toán kỹ thuật bằng Kotlin. Thành viên
-không cần Android Studio, Android SDK, Docker, Node.js, JWT hay PostgreSQL.
+## Chạy nhanh
 
-## Bắt đầu trong hai bước
+Yêu cầu: JDK 21 và Android SDK (API 36, Build Tools 35+). Không bắt buộc Android
+Studio.
 
-Yêu cầu duy nhất: Git và JDK 21 LTS.
+```powershell
+# Build, unit test và Android Lint
+.\build-android.bat check
 
-```bat
-git clone https://github.com/ThanDongVanHoc/Trace.git
-cd Trace
-dev.bat
+# Tạo APK nộp bài, đã ký bằng debug certificate và chạy trên máy ARM64
+.\build-android.bat submission
 ```
 
-Lần đầu Gradle tự tải dependency, SQLite tự tạo database. Sau đó mở:
+APK được tạo tại `apk/app-release.apk`. Cài vào thiết bị Android 7.0/API 24 trở
+lên bằng:
 
-- Swagger: `http://localhost:8080/docs`
-- Database: `playground/data/trace-dev.db`
-- Ảnh thử: `playground/data/blobs/`
-
-Không có đăng nhập trong playground. Khi sửa Kotlin, watcher tự biên dịch và Ktor
-nạp lại code. Nếu code không compile, xem `playground/data/compile-watch-error.log`.
-
-## Bốn module
-
-| Thành viên | File chính | Test |
-|---|---|---|
-| 1 — Enrollment | `playground/member1-enrollment/**/EnrollmentAlgorithm.kt` | `test.bat member1` |
-| 2 — Recognition | `playground/member2-recognition/**/RecognitionAlgorithm.kt` | `test.bat member2` |
-| 3 — Memory | `playground/member3-memory/**/MemoryAlgorithm.kt` | `test.bat member3` |
-| 4 — Secure Vault | `playground/member4-vault/**/VaultAlgorithm.kt` | `test.bat member4` |
-
-Chạy toàn bộ kiểm tra:
-
-```bat
-test.bat
+```powershell
+adb install -r .\apk\app-release.apk
 ```
 
-## Kiến trúc playground
+Xem hướng dẫn môi trường, build Google Play và release signing tại
+[`apps/android/README.md`](apps/android/README.md).
+
+## Luồng sản phẩm
+
+1. Tạo tài khoản cục bộ hoặc đăng nhập.
+2. Chọn **Scan → Gắn tag**, chụp ảnh, chỉnh ROI và đặt tên đồ vật.
+3. Chọn **Scan → Nhận diện**, chụp khung cảnh; MobileNetV3 + SSD MobileNet chạy
+   trên thiết bị và ghi nhận lần xuất hiện nếu khớp.
+4. Mở **Tìm**, nhập/chọn tag để xem lần cuối, tọa độ và độ tin cậy.
+5. Ứng dụng phát thông báo local sau khi ghi nhận thành công.
+
+## Kiến trúc
 
 ```text
-Swagger / Postman
+Jetpack Compose UI
         |
         v
-Ktor dev-server             Chỉ là test harness
+core:contracts  <--- API ổn định giữa bốn bài toán
         |
-        +--> member1-enrollment
-        +--> member2-recognition
-        +--> member3-memory ----> SQLite file
-        +--> member4-vault
-        |
-        +--> contracts           Request/response/interface cố định
+        +-- feature:enrollment  (ROI -> embedding -> reference)
+        +-- feature:recognition (SSD crop + MobileNet + cosine)
+        +-- feature:memory      (sighting, dedupe, last-seen)
+        +-- feature:securevault (AES-256-GCM + Android Keystore)
+                         |
+                         v
+                    Room + encrypted files
 ```
 
-HTTP và SQLite đã được nối sẵn. Thành viên chỉ sửa thuật toán và test trong module
-của mình. Prototype hiện tại chứng minh pipeline chạy được, không phải lời giải cuối.
+- Ảnh, tag, vector embedding và vị trí chính xác được mã hóa trước khi ghi đĩa.
+- Khóa AES-256 được tạo và giữ trong Android Keystore; mỗi bản ghi dùng nonce
+  ngẫu nhiên và AAD ràng buộc account/record/type để chống tráo ciphertext.
+- Room lưu metadata, quan hệ và timeline; dữ liệu được phân vùng theo tài khoản
+  cục bộ.
+- Hai model ONNX nằm trong APK và không tải dữ liệu người dùng ra ngoài.
 
-`apps/android/` và `services/api/` vẫn được giữ cho giai đoạn sản phẩm. Playground
-không phải production backend; sau khi bốn bài toán đạt tiêu chí, AI/team integration
-sẽ chuyển hoặc viết lại implementation cho Android.
+Mã thử nghiệm Ktor/Node cũ vẫn nằm trong `playground/` và `services/` để giữ lịch
+sử đóng góp, nhưng không được đóng gói và không tham gia runtime Android.
 
-Requirement ngắn của từng người nằm trong `docs/team/`.
+## Đóng góp đã tích hợp
+
+- `khuong_enrollment`: pipeline enrollment và MobileNetV3 embedding.
+- `phong_recognition`: nhận diện hai pipeline SSD + MobileNet/cosine.
+- `Phat`: memory timeline, chống ghi trùng và truy vấn lần cuối.
+- `final`: chuyển toàn bộ sang Android on-device, Room, local auth, permissions,
+  notification và secure vault.
+
+Requirement từng thành viên và lecture security nằm trong [`docs/team`](docs/team)
+và [`docs/lectures`](docs/lectures).

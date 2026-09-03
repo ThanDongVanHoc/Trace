@@ -61,9 +61,24 @@ fun ScanScreen(
                 PackageManager.PERMISSION_GRANTED,
         )
     }
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { hasCameraPermission = it }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        hasLocationPermission = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        viewModel.recognize()
+    }
 
     LaunchedEffect(Unit) {
         if (!hasCameraPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -151,7 +166,20 @@ fun ScanScreen(
                     Text("Chụp lại")
                 }
                 Button(
-                    onClick = if (state.mode == ScanMode.TAG) viewModel::enroll else viewModel::recognize,
+                    onClick = {
+                        if (state.mode == ScanMode.TAG) {
+                            viewModel.enroll()
+                        } else if (hasLocationPermission) {
+                            viewModel.recognize()
+                        } else {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                ),
+                            )
+                        }
+                    },
                     enabled = !state.busy && (state.mode == ScanMode.RECOGNIZE || state.tag.isNotBlank()),
                     modifier = Modifier.weight(1f),
                 ) {

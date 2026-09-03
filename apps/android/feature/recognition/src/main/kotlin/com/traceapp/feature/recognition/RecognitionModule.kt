@@ -13,9 +13,9 @@ import javax.inject.Singleton
 abstract class RecognitionModule {
     @Binds
     @Singleton
-    abstract fun bindVisualEncoder(implementation: PrototypeVisualEngine): VisualEncoder
+    abstract fun bindVisualEncoder(implementation: OnDeviceVisualEngine): VisualEncoder
 
     @Binds
     @Singleton
-    abstract fun bindRecognitionApi(implementation: PrototypeVisualEngine): RecognitionApi
+    abstract fun bindRecognitionApi(implementation: OnDeviceVisualEngine): RecognitionApi
 }

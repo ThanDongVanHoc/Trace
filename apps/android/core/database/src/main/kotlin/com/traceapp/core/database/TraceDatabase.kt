@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         LocalReferenceEmbeddingEntity::class,
         LocalSightingEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class TraceDatabase : RoomDatabase() {

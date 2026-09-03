@@ -33,6 +33,7 @@ data class VisualEmbedding(
     val values: FloatArray,
     val modelName: String,
     val modelVersion: String,
+    val qualityScore: Float = 1f,
 )
 
 data class GeoFix(

@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.traceapp.core.network.AuthUser
+import com.traceapp.core.auth.AuthUser
 
 @Composable
 fun ProfileScreen(
@@ -70,13 +70,13 @@ fun ProfileScreen(
         }
         InfoCard(
             icon = Icons.Outlined.CloudDone,
-            title = "Backend đã kết nối",
-            description = "JWT access token ngắn hạn và refresh token xoay vòng.",
+            title = "Hoạt động hoàn toàn offline",
+            description = "Nhận diện, đăng nhập và lịch sử đều chạy trực tiếp trên thiết bị.",
         )
         InfoCard(
             icon = Icons.Outlined.Lock,
-            title = "Token trong Android Keystore",
-            description = "Dữ liệu đồ vật hiện dùng store mẫu; Thành viên 4 sẽ thay bằng AES-256-GCM.",
+            title = "Dữ liệu được bảo vệ cục bộ",
+            description = "Ảnh, tag, embedding và vị trí dùng AES-256-GCM với khóa Android Keystore.",
         )
         Button(
             onClick = {
@@ -86,17 +86,14 @@ fun ProfileScreen(
                     viewModel.enableNotifications()
                 }
             },
-            enabled = !state.busy,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (state.busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            else Icon(Icons.Outlined.Notifications, contentDescription = null)
+            Icon(Icons.Outlined.Notifications, contentDescription = null)
             Text(if (state.notificationsEnabled) "Thông báo đã bật" else "Bật thông báo")
         }
         if (state.notificationsEnabled) {
             OutlinedButton(
                 onClick = viewModel::sendTestNotification,
-                enabled = !state.busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Gửi thông báo thử") }
         }

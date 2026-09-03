@@ -2,6 +2,7 @@ package com.traceapp.android.ui.scan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.traceapp.android.notification.TraceNotifier
 import com.traceapp.core.contracts.EnrollRequest
 import com.traceapp.core.contracts.EnrollmentApi
 import com.traceapp.core.contracts.ImageInput
@@ -42,6 +43,7 @@ class ScanViewModel @Inject constructor(
     private val memoryApi: MemoryApi,
     private val objectStore: ObjectStore,
     private val locationReader: LocationReader,
+    private val notifier: TraceNotifier,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(ScanUiState())
     val state: StateFlow<ScanUiState> = mutableState.asStateFlow()
@@ -140,14 +142,17 @@ class ScanViewModel @Inject constructor(
                 ),
             )
             when (recorded) {
-                is TraceResult.Success -> mutableState.update {
-                    it.copy(
-                        busy = false,
-                        message = "Đã nhận ra “${reference.tag}” (${(detection.similarity * 100).toInt()}%).",
-                        isError = false,
-                        dataRevision = it.dataRevision + 1,
-                        canOpenFind = true,
-                    )
+                is TraceResult.Success -> {
+                    notifier.sightingRecorded(reference.tag)
+                    mutableState.update {
+                        it.copy(
+                            busy = false,
+                            message = "Đã nhận ra “${reference.tag}” (${(detection.similarity * 100).toInt()}%).",
+                            isError = false,
+                            dataRevision = it.dataRevision + 1,
+                            canOpenFind = true,
+                        )
+                    }
                 }
                 is TraceResult.Failure -> fail(recorded.error.message)
             }

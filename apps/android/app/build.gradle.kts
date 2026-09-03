@@ -6,12 +6,19 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
-if (file("google-services.json").exists()) {
-    apply(plugin = "com.google.gms.google-services")
-}
-
-val apiBaseUrl = providers.gradleProperty("TRACE_API_BASE_URL")
-    .orElse("http://10.0.2.2:3000/v1/")
+val produceAbiSplitApks = providers.gradleProperty("traceSplitApks")
+    .map(String::toBoolean)
+    .getOrElse(false)
+val releaseStorePath = providers.environmentVariable("TRACE_RELEASE_STORE_FILE").orNull
+val releaseStorePassword = providers.environmentVariable("TRACE_RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("TRACE_RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("TRACE_RELEASE_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(
+    releaseStorePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
 
 android {
     namespace = "com.traceapp.android"
@@ -23,18 +30,26 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.get()}\"")
-        manifestPlaceholders["usesCleartextTraffic"] = false
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    buildTypes {
-        debug {
-            manifestPlaceholders["usesCleartextTraffic"] = true
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseStorePath))
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
+    }
+
+    buildTypes {
+        debug { }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -42,8 +57,16 @@ android {
         }
     }
 
+    splits {
+        abi {
+            isEnable = produceAbiSplitApks
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
     buildFeatures {
-        buildConfig = true
         compose = true
     }
 
@@ -58,13 +81,14 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
+    compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 }
 
 dependencies {
     implementation(project(":core:contracts"))
     implementation(project(":core:database"))
-    implementation(project(":core:network"))
+    implementation(project(":core:auth"))
     implementation(project(":feature:enrollment"))
     implementation(project(":feature:recognition"))
     implementation(project(":feature:memory"))
@@ -88,8 +112,6 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.messaging)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 

@@ -19,6 +19,7 @@ coverage/
 # Android / Gradle
 .gradle/
 **/build/
+**/bin/
 playground/data/*
 !playground/data/models/
 !playground/data/models/**
@@ -38,3 +39,4 @@ GoogleService-Info.plist
 *.keystore
 *.p12
 *.mobileprovision
+*.idsig

@@ -25,6 +25,7 @@ enum class SecureAssetType { REFERENCE_IMAGE, SIGHTING_EVIDENCE }
 
 data class SecureAsset(
     val assetId: String,
+    val ownerRecordId: String,
     val type: SecureAssetType,
     val mimeType: String,
     val createdAtEpochMillis: Long,
@@ -32,11 +33,17 @@ data class SecureAsset(
 
 interface SecureAssetStore {
     suspend fun write(
+        ownerRecordId: String,
         type: SecureAssetType,
         plaintext: ByteArray,
         mimeType: String,
     ): TraceResult<SecureAsset>
 
-    suspend fun read(assetId: String): TraceResult<ByteArray>
+    suspend fun read(
+        assetId: String,
+        expectedOwnerRecordId: String,
+        expectedType: SecureAssetType,
+    ): TraceResult<ByteArray>
+
     suspend fun delete(assetId: String): TraceResult<Unit>
 }

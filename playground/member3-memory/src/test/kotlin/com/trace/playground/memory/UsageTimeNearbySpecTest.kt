@@ -111,7 +111,9 @@ class UsageTimeNearbySpecTest {
                 "object-1" to tuesday,
                 "object-5" to moment(6, 9, 0),
                 "object-2" to wednesday,
-                "object-3" to thursday
+                // Saturday and Wednesday are both two days away on a weekly circle;
+                // the forward-direction tie break places Wednesday first.
+                "object-4" to moment(5, 9, 0),
             )
         }
 

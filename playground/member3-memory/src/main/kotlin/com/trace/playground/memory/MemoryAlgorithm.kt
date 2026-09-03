@@ -16,8 +16,11 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.*
+import kotlin.math.asin
+import kotlin.math.cos
 import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 
 private const val TAU = 2.0 * PI
@@ -48,23 +51,17 @@ class MemoryAlgorithm(
         var isCloseInTime = false;
         var isCloseInSpace = false
         if (abs(prev.detectedAtEpochMillis - request.detectedAtEpochMillis) < DEDUPLICATION_TIME_WINDOW) {
-            println("Duplicated: Previous time is ${prev.detectedAtEpochMillis}, current time is ${request.detectedAtEpochMillis}")
             isCloseInTime = true
         }
-        println("Is previous null? ${prev.location ?: "true"}")
-        println("Is current null? ${request.location ?: "true"}")
         val prevLoc = prev.location;
         val requestLoc = request.location;
 
         if (prevLoc != null && requestLoc != null) {
             val distance = haversineDistance(prevLoc, requestLoc) <= DEDUPLICATION_DISTANCE_WINDOW
-            println("Non-null locations. Distance is ${distance}")
             if (distance) {
-                println("Close in space")
                 isCloseInSpace = true
             }
         } else {
-            println("Either locations are null")
             isCloseInSpace = true
         }
 
@@ -79,24 +76,19 @@ class MemoryAlgorithm(
             location = request.location
         );
         val lastSightingHistory: Sighting = repository.timeline(request.objectId, 1).firstOrNull() ?: run {
-            println("recording since no previous sighting")
             return repository.recordSighting(normalizedRequest)
         };
         if (isDuplicated(lastSightingHistory, request)) run {
-            println("Duplicated, no writing")
             return lastSightingHistory
         }
-        println("Writing, no duplication, having previous sighting")
         return repository.recordSighting(normalizedRequest)
     }
 
     override suspend fun find(query: String): List<MemoryResult> {
         require(query.isNotBlank()) { "query must not be blank" }
         var resultList = repository.findObjects(query.lowercase())
-        println(resultList.map { it.objectId })
         resultList =
             resultList.sortedWith(compareByDescending<MemoryResult> { it.lastSeen?.detectedAtEpochMillis }.thenBy { it.tag })
-        resultList.map { it -> println(it) }
         return resultList
     }
 
@@ -117,24 +109,28 @@ class MemoryAlgorithm(
 
         val matchedIdRows = if (objectFilter.isEmpty()) rows else rows.filter{row -> row.objectId in objectFilter}
         val ranked = matchedIdRows
-            .map { row -> cosineDistance(target, UsageVector(row.daytimeAngle, row.weekdayAngle)) to row }
-            .filter{it -> it.first >= 0.8} // Magic number here. Tested with multiplier = 0.3 and threshold 0.8: 2h30 for the same day, 2h15 for another day, 1h45 for two days apart, 1h for three days apart.
-            .sortedWith(compareByDescending<Pair<Double, UsageRow>> { it.first }.thenBy { it.second.tag })
-            .take(k)
-            .map { it ->
-                UsageMatch(
-                    objectId = it.second.objectId,
-                    tag = it.second.tag?:"",
-                    it.first,
-                    it.second.detectedAtEpochMillis?:0,
-                    it.second.confidenceScore.toDouble()
+            .map { row ->
+                val rowVector = UsageVector(row.daytimeAngle, row.weekdayAngle)
+                ScoredUsage(
+                    similarity = periodicSimilarity(target, rowVector),
+                    forwardTieBreak = forwardDistance(target, rowVector),
+                    row = row,
                 )
-            }.sortedWith(compareByDescending<UsageMatch> { it.vectorDistance }.thenByDescending{it.matchedEpochMillis}.thenByDescending { it.objectId })
+            }
+            .sortedWith(::compareScoredUsage)
+            .distinctBy { it.row.objectId }
+            .take(k)
+            .map { scored ->
+                UsageMatch(
+                    objectId = scored.row.objectId,
+                    tag = scored.row.tag ?: "",
+                    vectorDistance = scored.similarity,
+                    matchedEpochMillis = scored.row.detectedAtEpochMillis ?: 0,
+                    confidence = scored.row.confidenceScore.toDouble(),
+                )
+            }
 
-        val dedupObject : List<String> = ranked.map{it -> it.objectId}.distinct().sortedBy{ it->it }
-        println(ranked)
-        println(dedupObject)
-        return NearbyUsageResult(ranked, dedupObject)
+        return NearbyUsageResult(ranked, ranked.map(UsageMatch::objectId))
     }
 
 
@@ -148,12 +144,47 @@ class MemoryAlgorithm(
         return UsageVector(daytimeAngle, weekdayAngle)
     }
 
-    private fun cosineDistance(vector1: UsageVector, vector2: UsageVector): Double {
-        val dotProduct =
-            cos(vector1.daytimeAngle) * cos(vector2.daytimeAngle) + sin(vector1.daytimeAngle) * sin(vector2.daytimeAngle) +
-                    UsageVector.WEEK_LENGTH_MULTIPLIER.pow(2) *
-                    (cos(vector1.weekdayAngle) * cos(vector2.weekdayAngle) + sin(vector1.weekdayAngle) * sin(vector2.weekdayAngle))
-        return dotProduct / (1 + UsageVector.WEEK_LENGTH_MULTIPLIER.pow(2))
+    private fun periodicSimilarity(vector1: UsageVector, vector2: UsageVector): Double {
+        val daytimeDistance = circularDistance(vector1.daytimeAngle, vector2.daytimeAngle) / PI
+        val weekdayDistance = circularDistance(vector1.weekdayAngle, vector2.weekdayAngle) / PI
+        val weekWeight = UsageVector.WEEK_LENGTH_MULTIPLIER
+        return 1.0 - (daytimeDistance + weekWeight * weekdayDistance) / (1.0 + weekWeight)
+    }
+
+    private fun circularDistance(first: Double, second: Double): Double {
+        val raw = abs(first - second) % TAU
+        return minOf(raw, TAU - raw)
+    }
+
+    private fun forwardDistance(target: UsageVector, candidate: UsageVector): Double {
+        val daytime = forwardAngle(target.daytimeAngle, candidate.daytimeAngle)
+        val weekday = forwardAngle(target.weekdayAngle, candidate.weekdayAngle)
+        val weekWeight = UsageVector.WEEK_LENGTH_MULTIPLIER.pow(2)
+        return (daytime + weekWeight * weekday) / (1 + weekWeight)
+    }
+
+    private fun forwardAngle(from: Double, to: Double): Double =
+        ((to - from) % TAU + TAU) % TAU
+
+    private fun compareScoredUsage(first: ScoredUsage, second: ScoredUsage): Int {
+        val similarityDelta = second.similarity - first.similarity
+        if (abs(similarityDelta) > SCORE_EPSILON) return similarityDelta.compareTo(0.0)
+        val forwardDelta = first.forwardTieBreak - second.forwardTieBreak
+        if (abs(forwardDelta) > SCORE_EPSILON) return forwardDelta.compareTo(0.0)
+        val epoch = (second.row.detectedAtEpochMillis ?: Long.MIN_VALUE)
+            .compareTo(first.row.detectedAtEpochMillis ?: Long.MIN_VALUE)
+        if (epoch != 0) return epoch
+        return second.row.objectId.compareTo(first.row.objectId)
+    }
+
+    private data class ScoredUsage(
+        val similarity: Double,
+        val forwardTieBreak: Double,
+        val row: UsageRow,
+    )
+
+    private companion object {
+        const val SCORE_EPSILON = 1e-12
     }
 
 }

@@ -15,10 +15,14 @@ android {
     }
 }
 
-kotlin { jvmToolchain(17) }
+kotlin {
+    jvmToolchain(21)
+    compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
+}
 
 dependencies {
     implementation(project(":core:contracts"))
+    implementation(libs.onnxruntime.android)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

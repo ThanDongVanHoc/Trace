@@ -14,13 +14,21 @@ import javax.inject.Singleton
 abstract class SecureVaultModule {
     @Binds
     @Singleton
-    abstract fun bindObjectStore(implementation: InMemoryObjectStore): ObjectStore
+    abstract fun bindObjectStore(implementation: RoomObjectStore): ObjectStore
 
     @Binds
     @Singleton
-    abstract fun bindSightingStore(implementation: InMemorySightingStore): SightingStore
+    abstract fun bindSightingStore(implementation: RoomSightingStore): SightingStore
 
     @Binds
     @Singleton
-    abstract fun bindAssetStore(implementation: InMemoryAssetStore): SecureAssetStore
+    abstract fun bindAssetStore(implementation: EncryptedSecureAssetStore): SecureAssetStore
+
+    @Binds
+    @Singleton
+    abstract fun bindCryptoVault(implementation: AesGcmVault): CryptoVault
+
+    @Binds
+    @Singleton
+    abstract fun bindKeyProvider(implementation: AndroidKeystoreKeyProvider): VaultKeyProvider
 }

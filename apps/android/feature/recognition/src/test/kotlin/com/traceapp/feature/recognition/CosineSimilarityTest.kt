@@ -7,14 +7,14 @@ class CosineSimilarityTest {
     @Test
     fun identicalVectors_scoreOne() {
         assertThat(
-            PrototypeVisualEngine.cosineSimilarity(floatArrayOf(1f, 2f), floatArrayOf(1f, 2f)),
+            CosineSimilarity.score(floatArrayOf(1f, 2f), floatArrayOf(1f, 2f)),
         ).isWithin(0.0001f).of(1f)
     }
 
     @Test
     fun orthogonalVectors_scoreZero() {
         assertThat(
-            PrototypeVisualEngine.cosineSimilarity(floatArrayOf(1f, 0f), floatArrayOf(0f, 1f)),
+            CosineSimilarity.score(floatArrayOf(1f, 0f), floatArrayOf(0f, 1f)),
         ).isWithin(0.0001f).of(0f)
     }
 }

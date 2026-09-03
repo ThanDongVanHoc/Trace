@@ -1,2 +1,3 @@
 -keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
+-keep class ai.onnxruntime.** { *; }

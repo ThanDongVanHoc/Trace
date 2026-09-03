@@ -1,9 +1,0 @@
-ktor:
-  development: true
-  deployment:
-    port: "$TRACE_DEV_PORT:8080"
-    watch:
-      - build
-  application:
-    modules:
-      - com.trace.playground.server.ApplicationKt.module
