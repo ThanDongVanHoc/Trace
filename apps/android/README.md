@@ -64,7 +64,7 @@ Dependency chỉ đi qua `core:contracts`; UI không truy cập DAO trực tiế
 
 ## Smoke test trên điện thoại
 
-1. Cài APK, tạo tài khoản với mật khẩu ít nhất 10 ký tự.
+1. Cài APK, tạo tài khoản với mật khẩu ít nhất 8 ký tự.
 2. Cấp Camera; ở lần nhận diện đầu tiên, chọn cho phép Location. Notification là
    tùy chọn.
 3. Gắn tag một đồ vật bằng ROI rõ, đủ sáng.

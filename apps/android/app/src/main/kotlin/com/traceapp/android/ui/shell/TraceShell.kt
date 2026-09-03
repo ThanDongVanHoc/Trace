@@ -30,8 +30,8 @@ import com.traceapp.android.ui.scan.ScanScreen
 import com.traceapp.core.auth.AuthUser
 
 private enum class Destination(val label: String, val icon: ImageVector) {
-    HOME("Home", Icons.Outlined.Home),
-    SCAN("Scan", Icons.Outlined.PhotoCamera),
+    HOME("Trang chủ", Icons.Outlined.Home),
+    SCAN("Ghi nhớ", Icons.Outlined.PhotoCamera),
     FIND("Tìm", Icons.Outlined.Search),
     PROFILE("Cá nhân", Icons.Outlined.Person),
 }
@@ -66,7 +66,12 @@ fun TraceShell(
     ) { contentPadding ->
         androidx.compose.foundation.layout.Box(Modifier.padding(contentPadding)) {
             when (destination) {
-                Destination.HOME -> HomeScreen(objectState, user.displayName)
+                Destination.HOME -> HomeScreen(
+                    state = objectState,
+                    displayName = user.displayName,
+                    onScan = { destination = Destination.SCAN },
+                    onFind = { destination = Destination.FIND },
+                )
                 Destination.SCAN -> ScanScreen(
                     onDataChanged = { dataRevision++ },
                     onOpenFind = {

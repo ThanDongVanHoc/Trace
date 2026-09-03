@@ -2,7 +2,6 @@ package com.traceapp.core.auth
 
 import android.content.Context
 import android.util.Base64
-import android.util.Patterns
 import com.traceapp.core.contracts.AccountSession
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.nio.charset.StandardCharsets
@@ -14,6 +13,8 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class AuthUser(
     val id: String,
@@ -58,49 +59,62 @@ class LocalAuthRepository @Inject constructor(
         }
     }
 
-    override suspend fun login(email: String, password: String): AuthResult<AuthUser> = synchronized(lock) {
-        val normalizedEmail = normalizeEmail(email)
-        val account = readAccount(normalizedEmail)
-            ?: return@synchronized AuthResult.Failure("Email hoặc mật khẩu không đúng.")
-        val candidate = derivePassword(password, account.salt, account.iterations)
-        if (!MessageDigest.isEqual(candidate, account.passwordVerifier)) {
-            return@synchronized AuthResult.Failure("Email hoặc mật khẩu không đúng.")
+    override suspend fun login(email: String, password: String): AuthResult<AuthUser> =
+        withContext(Dispatchers.Default) {
+            synchronized(lock) {
+                val normalizedEmail = normalizeEmail(email)
+                val account = readAccount(normalizedEmail)
+                    ?: return@synchronized AuthResult.Failure("Email hoặc mật khẩu không đúng.")
+                val candidate = runCatching {
+                    derivePassword(password, account.salt, account.iterations)
+                }.getOrElse {
+                    return@synchronized AuthResult.Failure("Không thể mở khóa tài khoản trên thiết bị này.")
+                }
+                if (!MessageDigest.isEqual(candidate, account.passwordVerifier)) {
+                    return@synchronized AuthResult.Failure("Email hoặc mật khẩu không đúng.")
+                }
+                val saved = preferences.edit().putString(SESSION_ACCOUNT_ID, account.user.id).commit()
+                if (!saved) return@synchronized AuthResult.Failure("Không thể lưu phiên đăng nhập. Hãy thử lại.")
+                AuthResult.Success(account.user)
+            }
         }
-        check(preferences.edit().putString(SESSION_ACCOUNT_ID, account.user.id).commit())
-        AuthResult.Success(account.user)
-    }
 
     override suspend fun register(
         displayName: String,
         email: String,
         password: String,
-    ): AuthResult<AuthUser> = synchronized(lock) {
-        val name = displayName.trim()
-        val normalizedEmail = normalizeEmail(email)
-        when {
-            name.length !in 2..80 -> return@synchronized AuthResult.Failure("Tên phải có từ 2 đến 80 ký tự.")
-            !Patterns.EMAIL_ADDRESS.matcher(normalizedEmail).matches() ->
-                return@synchronized AuthResult.Failure("Email không hợp lệ.")
-            password.length < 10 -> return@synchronized AuthResult.Failure("Mật khẩu cần ít nhất 10 ký tự.")
-            readAccount(normalizedEmail) != null ->
+    ): AuthResult<AuthUser> = withContext(Dispatchers.Default) {
+        synchronized(lock) {
+            val name = displayName.trim()
+            val normalizedEmail = normalizeEmail(email)
+            val validation = AuthValidation.registration(name, normalizedEmail, password)
+            validation.displayNameError?.let { return@synchronized AuthResult.Failure(it) }
+            validation.emailError?.let { return@synchronized AuthResult.Failure(it) }
+            validation.passwordError?.let { return@synchronized AuthResult.Failure(it) }
+            if (readAccount(normalizedEmail) != null) {
                 return@synchronized AuthResult.Failure("Email này đã được đăng ký trên thiết bị.")
-        }
+            }
 
-        val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
-        val user = AuthUser(UUID.randomUUID().toString(), normalizedEmail, name)
-        val account = StoredAccount(
-            user = user,
-            salt = salt,
-            passwordVerifier = derivePassword(password, salt, PBKDF2_ITERATIONS),
-            iterations = PBKDF2_ITERATIONS,
-        )
-        check(
-            preferences.edit()
+            val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
+            val user = AuthUser(UUID.randomUUID().toString(), normalizedEmail, name)
+            val verifier = runCatching {
+                derivePassword(password, salt, PBKDF2_ITERATIONS)
+            }.getOrElse {
+                return@synchronized AuthResult.Failure("Không thể tạo tài khoản trên thiết bị này.")
+            }
+            val account = StoredAccount(
+                user = user,
+                salt = salt,
+                passwordVerifier = verifier,
+                iterations = PBKDF2_ITERATIONS,
+            )
+            val saved = preferences.edit()
                 .putString(accountKey(normalizedEmail), encode(account))
                 .putString(SESSION_ACCOUNT_ID, user.id)
-                .commit(),
-        )
-        AuthResult.Success(user)
+                .commit()
+            if (!saved) return@synchronized AuthResult.Failure("Không thể lưu tài khoản. Hãy thử lại.")
+            AuthResult.Success(user)
+        }
     }
 
     override suspend fun logout() {

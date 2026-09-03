@@ -38,7 +38,7 @@ $jdk21 = Find-Jdk21
 $env:JAVA_HOME = $jdk21
 $env:Path = "$(Join-Path $jdk21 'bin');$env:Path"
 
-$gradleArguments = switch ($Mode) {
+$gradleArguments = @(switch ($Mode) {
     'build' { @('assembleDebug') }
     'check' { @('testDebugUnitTest', 'lintDebug', 'assembleDebug') }
     'install' { @('testDebugUnitTest', 'installDebug') }
@@ -52,7 +52,7 @@ $gradleArguments = switch ($Mode) {
         )
     }
     'bundle' { @('testDebugUnitTest', 'lintDebug', 'bundleRelease') }
-}
+})
 
 Push-Location $androidRoot
 try {

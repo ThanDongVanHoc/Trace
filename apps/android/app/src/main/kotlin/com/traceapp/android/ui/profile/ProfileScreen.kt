@@ -7,10 +7,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
@@ -45,67 +48,95 @@ fun ProfileScreen(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> if (granted) viewModel.enableNotifications() }
 
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("Cá nhân", style = MaterialTheme.typography.headlineMedium)
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.padding(18.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Outlined.AccountCircle,
-                    contentDescription = null,
-                    modifier = Modifier.size(52.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Column {
-                    Text(user.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                    Text(user.email, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        item {
+            Text("Cá nhân", style = MaterialTheme.typography.headlineMedium)
+        }
+        item {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.padding(18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.AccountCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(52.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Column {
+                        Text(
+                            user.displayName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(user.email, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
-        InfoCard(
-            icon = Icons.Outlined.CloudDone,
-            title = "Hoạt động hoàn toàn offline",
-            description = "Nhận diện, đăng nhập và lịch sử đều chạy trực tiếp trên thiết bị.",
-        )
-        InfoCard(
-            icon = Icons.Outlined.Lock,
-            title = "Dữ liệu được bảo vệ cục bộ",
-            description = "Ảnh, tag, embedding và vị trí dùng AES-256-GCM với khóa Android Keystore.",
-        )
-        Button(
-            onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    viewModel.enableNotifications()
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Outlined.Notifications, contentDescription = null)
-            Text(if (state.notificationsEnabled) "Thông báo đã bật" else "Bật thông báo")
-        }
-        if (state.notificationsEnabled) {
-            OutlinedButton(
-                onClick = viewModel::sendTestNotification,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Gửi thông báo thử") }
-        }
-        state.message?.let {
-            Text(
-                it,
-                color = if (state.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+        item {
+            InfoCard(
+                icon = Icons.Outlined.CloudDone,
+                title = "Hoạt động hoàn toàn offline",
+                description = "Nhận diện, đăng nhập và lịch sử đều chạy trực tiếp trên thiết bị.",
             )
         }
-        OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null)
-            Text("Đăng xuất")
+        item {
+            InfoCard(
+                icon = Icons.Outlined.Lock,
+                title = "Dữ liệu được bảo vệ cục bộ",
+                description = "Ảnh, tag, embedding và vị trí dùng AES-256-GCM với khóa Android Keystore.",
+            )
+        }
+        item {
+            Button(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        viewModel.enableNotifications()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.Notifications, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (state.notificationsEnabled) "Thông báo đã bật" else "Bật thông báo")
+            }
+        }
+        if (state.notificationsEnabled) {
+            item {
+                OutlinedButton(
+                    onClick = viewModel::sendTestNotification,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Gửi thông báo thử")
+                }
+            }
+        }
+        state.message?.let {
+            item {
+                Text(
+                    it,
+                    color = if (state.isError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                )
+            }
+        }
+        item {
+            OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Đăng xuất")
+            }
         }
     }
 }

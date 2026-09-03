@@ -59,9 +59,18 @@ class AesGcmVault @Inject constructor(
     override fun seal(plaintext: ByteArray, context: VaultContext): VaultEnvelope {
         validateContext(context)
         val key = keyProvider.activeKey()
-        val nonce = ByteArray(NONCE_BYTES).also(random::nextBytes)
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, key.secretKey, GCMParameterSpec(TAG_BITS, nonce))
+        // Android Keystore must generate the GCM IV itself when the key requires randomized
+        // encryption. Supplying our own nonce is rejected on API 24 with
+        // "Caller-provided IV not permitted", even if that nonce came from SecureRandom.
+        cipher.init(Cipher.ENCRYPT_MODE, key.secretKey, random)
+        val nonce = requireNotNull(cipher.iv).copyOf()
+        if (nonce.size != NONCE_BYTES) {
+            throw VaultException(
+                VaultFailureReason.UNSUPPORTED_ENVELOPE,
+                "Encryption provider returned an unsupported GCM nonce size",
+            )
+        }
         cipher.updateAAD(VaultContextCodec.encode(context))
         return VaultEnvelope(
             envelopeVersion = ENVELOPE_VERSION,
