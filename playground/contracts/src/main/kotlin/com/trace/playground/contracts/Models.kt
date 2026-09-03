@@ -10,8 +10,9 @@ data class Roi(
     val bottom: Float,
 ) {
     val isValid: Boolean
-        get() = left in 0f..1f && top in 0f..1f && right in 0f..1f &&
-            bottom in 0f..1f && left < right && top < bottom
+        get() =
+            left in 0f..1f && top in 0f..1f && right in 0f..1f &&
+                bottom in 0f..1f && left < right && top < bottom
 }
 
 data class ImageInput(
@@ -98,7 +99,9 @@ data class Sighting(
 )
 
 @Serializable
-data class FindRequest(val query: String)
+data class FindRequest(
+    val query: String,
+)
 
 @Serializable
 data class MemoryResult(
@@ -123,10 +126,51 @@ data class SealedPayload(
 )
 
 @Serializable
-data class OpenResult(val plainText: String)
+data class OpenResult(
+    val plainText: String,
+)
 
 @Serializable
 data class ApiError(
     val code: String,
     val message: String,
+)
+@Serializable
+data class UsageVector (
+    val daytimeAngle: Double,
+    val weekdayAngle: Double
+) {
+    companion object {
+        val WEEK_LENGTH_MULTIPLIER: Double = 0.3
+    }
+}
+@Serializable
+data class UsageRow(
+    val id: String,
+    val daytimeAngle: Double,
+    val weekdayAngle: Double,
+    val confidenceScore: Float,
+    val objectId: String,
+    val tag: String? = null,
+    val detectedAtEpochMillis: Long? = null,
+)
+
+data class NearbyUsageRequest(
+    val atEpochMillis: Long? = null,
+    val k: Int = 5,
+)
+
+@Serializable
+data class UsageMatch(
+    val objectId: String,
+    val tag: String,
+    val vectorDistance: Double,
+    val matchedEpochMillis: Long,
+    val confidence: Double,
+)
+
+@Serializable
+data class NearbyUsageResult(
+    val ranked: List<UsageMatch>,
+    val matchedObjects: List<String>
 )

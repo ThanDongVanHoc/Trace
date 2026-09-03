@@ -1,0 +1,141 @@
+openapi: 3.0.3
+info:
+  title: TRACE Kotlin Technical Playground
+  version: 0.1.0
+  description: Local-only API for the four technical assignments. No JWT and no external services.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Check the playground and embedded database
+      responses:
+        '200': { description: Ready }
+  /dev/enrollments:
+    post:
+      tags: [Member 1 - Enrollment]
+      summary: Enroll one tagged ROI from one JPEG
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image, tag, roiLeft, roiTop, roiRight, roiBottom]
+              properties:
+                image: { type: string, format: binary }
+                tag: { type: string, example: Balo cua toi }
+                roiLeft: { type: number, format: float, example: 0.1 }
+                roiTop: { type: number, format: float, example: 0.1 }
+                roiRight: { type: number, format: float, example: 0.9 }
+                roiBottom: { type: number, format: float, example: 0.9 }
+                rotationDegrees: { type: integer, example: 0 }
+      responses:
+        '201': { description: Enrolled and stored in local SQLite }
+        '400': { description: Invalid image, ROI or tag }
+  /dev/recognitions:
+    post:
+      tags: [Member 2 - Recognition]
+      summary: Recognize objects using locally enrolled references
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image: { type: string, format: binary }
+                minimumSimilarity: { type: number, format: float, example: 0.75 }
+                maximumResults: { type: integer, example: 5 }
+                rotationDegrees: { type: integer, example: 0 }
+      responses:
+        '200': { description: Ranked matches or UNKNOWN }
+  /dev/memory/sightings:
+    post:
+      tags: [Member 3 - Memory]
+      summary: Record that an enrolled object was seen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [objectId, detectedAtEpochMillis, confidence]
+              properties:
+                objectId: { type: string }
+                detectedAtEpochMillis: { type: integer, format: int64 }
+                confidence: { type: number, format: float, example: 0.9 }
+                location:
+                  type: object
+                  properties:
+                    latitude: { type: number, format: double }
+                    longitude: { type: number, format: double }
+                    accuracyMeters: { type: number, format: float }
+      responses:
+        '201': { description: Sighting saved }
+  /dev/memory/find:
+    post:
+      tags: [Member 3 - Memory]
+      summary: Find objects by a natural tag query, without an input image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, example: balo }
+      responses:
+        '200': { description: Matching objects and their last sighting }
+  /dev/memory/objects/{objectId}/timeline:
+    get:
+      tags: [Member 3 - Memory]
+      summary: Read an object's sighting timeline
+      parameters:
+        - in: path
+          name: objectId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Newest sightings first }
+  /dev/vault/seal:
+    post:
+      tags: [Member 4 - Secure Vault]
+      summary: Encrypt and authenticate plaintext
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plainText]
+              properties:
+                plainText: { type: string, example: du lieu bi mat }
+                aad: { type: string, example: object:123 }
+      responses:
+        '200': { description: AES-GCM envelope }
+  /dev/vault/open:
+    post:
+      tags: [Member 4 - Secure Vault]
+      summary: Authenticate and decrypt an envelope returned by seal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [algorithm, keyId, nonceBase64, cipherTextBase64]
+              properties:
+                algorithm: { type: string, example: AES-256-GCM }
+                keyId: { type: string, example: dev-ephemeral-key }
+                nonceBase64: { type: string }
+                cipherTextBase64: { type: string }
+                aad: { type: string, nullable: true }
+      responses:
+        '200': { description: Authenticated plaintext }
+        '400': { description: Tampered payload or wrong AAD }
