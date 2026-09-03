@@ -7,12 +7,19 @@ import com.trace.playground.contracts.RecordSightingRequest
 import com.trace.playground.contracts.ReferenceVector
 import com.trace.playground.contracts.Sighting
 import com.trace.playground.contracts.TraceRepository
+import com.trace.playground.contracts.UsageRow
 import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.UUID
+import kotlin.math.PI
+
+private const val TAU = 2.0 * PI
 
 class SqliteTraceRepository(
     private val databasePath: Path,
@@ -69,6 +76,33 @@ class SqliteTraceRepository(
                         "ON sightings(object_id, detected_at DESC)",
                 )
             }
+            migrateUsageTime(connection)
+        }
+    }
+
+    private fun migrateUsageTime(connection: Connection) {
+        val version = connection.createStatement().use { it.executeQuery("PRAGMA user_version") }
+            .use { rows -> if (rows.next()) rows.getInt(1) else 0 }
+        if (version >= 1) return
+
+        val script = javaClass.getResourceAsStream("/db/migration/V1__create_usage_time.sql")
+            ?: throw IllegalStateException("Missing migration resource V1__create_usage_time.sql")
+        val sql = script.bufferedReader().use { it.readText() }
+
+        val statements = sql.split(";").map { it.trim() }.filter { it.isNotEmpty() }
+
+        connection.autoCommit = false
+        try {
+            statements.forEach { statementText ->
+                connection.createStatement().use { it.executeUpdate(statementText) }
+            }
+            connection.createStatement().use { it.executeUpdate("PRAGMA user_version = 1") }
+            connection.commit()
+        } catch (failure: Exception) {
+            connection.rollback()
+            throw failure
+        } finally {
+            connection.autoCommit = true
         }
     }
 
@@ -161,6 +195,21 @@ class SqliteTraceRepository(
                 statement.setNullableDouble(7, request.location?.accuracyMeters?.toDouble())
                 statement.executeUpdate()
             }
+            val usage = usageVector(request.detectedAtEpochMillis)
+            connection.prepareStatement(
+                """
+                INSERT INTO usage_time(
+                    id, daytime_angle, weekday_angle, confidence_score, object_id
+                ) VALUES (?, ?, ?, ?, ?)
+                """.trimIndent(),
+            ).use { statement ->
+                statement.setString(1, sightingId)
+                statement.setDouble(2, usage.first)
+                statement.setDouble(3, usage.second)
+                statement.setFloat(4, request.confidence)
+                statement.setString(5, request.objectId)
+                statement.executeUpdate()
+            }
             return Sighting(
                 sightingId = sightingId,
                 objectId = request.objectId,
@@ -215,6 +264,46 @@ class SqliteTraceRepository(
         }
     }
 
+    override fun usageRows(): List<UsageRow> = connection().use { connection ->
+        connection.prepareStatement(
+            """
+            SELECT u.id, u.object_id, o.tag, u.daytime_angle, u.weekday_angle,
+                   u.confidence_score, s.detected_at AS detected_at
+            FROM usage_time u
+            JOIN objects o ON o.id = u.object_id
+            LEFT JOIN sightings s ON s.id = u.id
+            ORDER BY u.id
+            """.trimIndent(),
+        ).use { statement ->
+            statement.executeQuery().use { rows ->
+                buildList {
+                    while (rows.next()) {
+                        add(
+                            UsageRow(
+                                id = rows.getString("id"),
+                                objectId = rows.getString("object_id"),
+                                tag = rows.getString("tag"),
+                                daytimeAngle = rows.getDouble("daytime_angle"),
+                                weekdayAngle = rows.getDouble("weekday_angle"),
+                                confidenceScore = rows.getFloat("confidence_score"),
+                                detectedAtEpochMillis = rows.getNullableLong("detected_at"),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun usageVector(epochMillis: Long): Pair<Double, Double> {
+        val millisOfDay = Math.floorMod(epochMillis, 86_400_000L)
+        val daytimeAngle = TAU * millisOfDay / 86_400_000.0
+        val local = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneOffset.UTC)
+        val weekdayIndex = local.dayOfWeek.value % 7
+        val weekdayAngle = TAU * weekdayIndex / 7.0
+        return daytimeAngle to weekdayAngle
+    }
+
     private fun latestSighting(connection: Connection, objectId: String): Sighting? {
         val tag = objectTag(connection, objectId) ?: return null
         return connection.prepareStatement(
@@ -255,6 +344,9 @@ class SqliteTraceRepository(
 
     private fun ResultSet.getNullableDouble(column: String): Double? =
         getDouble(column).let { value -> if (wasNull()) null else value }
+
+    private fun ResultSet.getNullableLong(column: String): Long? =
+        getLong(column).let { value -> if (wasNull()) null else value }
 
     private fun java.sql.PreparedStatement.setNullableDouble(index: Int, value: Double?) {
         if (value == null) setNull(index, java.sql.Types.REAL) else setDouble(index, value)

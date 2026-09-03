@@ -2,7 +2,6 @@ package com.trace.playground.server
 
 import com.trace.playground.contracts.ApiError
 import com.trace.playground.contracts.FindRequest
-import com.trace.playground.contracts.NearbyUsageRequest
 import com.trace.playground.contracts.RecordSightingRequest
 import com.trace.playground.contracts.SealRequest
 import com.trace.playground.contracts.SealedPayload
@@ -101,10 +100,6 @@ fun Application.tracePlayground(dataDirectory: Path) {
                 val objectId = requireNotNull(call.parameters["objectId"]) { "objectId is required" }
                 val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 50
                 call.respond(memory.timeline(objectId, limit))
-            }
-
-            post("/memory/nearby") {
-                call.respond(memory.nearbyUsage(call.receive<NearbyUsageRequest>()))
             }
 
             post("/vault/seal") {
