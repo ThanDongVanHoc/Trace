@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'node:crypto';
 import { Repository } from 'typeorm';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -140,14 +141,14 @@ export class AuthService {
     session: SessionEntity,
   ): Promise<AuthResponse> {
     const accessToken = await this.jwt.signAsync(
-      { sub: user.id, sid: session.id, type: 'access' },
+      { sub: user.id, sid: session.id, type: 'access', jti: randomUUID() },
       {
         secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
         expiresIn: this.accessTtlSeconds,
       },
     );
     const refreshToken = await this.jwt.signAsync(
-      { sub: user.id, sid: session.id, type: 'refresh' },
+      { sub: user.id, sid: session.id, type: 'refresh', jti: randomUUID() },
       {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
         expiresIn: this.refreshTtlSeconds,
