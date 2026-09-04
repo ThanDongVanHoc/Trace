@@ -71,12 +71,16 @@ fun AuthScreen(
 ) {
     var registering by remember { mutableStateOf(false) }
     var displayName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var loginEmail by remember { mutableStateOf("") }
+    var loginPassword by remember { mutableStateOf("") }
+    var registrationEmail by remember { mutableStateOf("") }
+    var registrationPassword by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
     var revealPassword by remember { mutableStateOf(false) }
     var submitted by remember { mutableStateOf(false) }
-    val validation = AuthValidation.registration(displayName, email, password, confirmation)
+    val email = if (registering) registrationEmail else loginEmail
+    val password = if (registering) registrationPassword else loginPassword
+    val validation = AuthValidation.registration(displayName, registrationEmail, registrationPassword, confirmation)
     val emailError = AuthValidation.emailError(email)
     val passwordError = if (password.isBlank()) "Nhập mật khẩu" else null
     val focusManager = LocalFocusManager.current
@@ -188,7 +192,7 @@ fun AuthScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = {
-                            email = it
+                            if (registering) registrationEmail = it else loginEmail = it
                             if (state.error != null) onClearError()
                         },
                         label = { Text("Email") },
@@ -207,7 +211,7 @@ fun AuthScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = {
-                            password = it
+                            if (registering) registrationPassword = it else loginPassword = it
                             if (state.error != null) onClearError()
                         },
                         label = { Text("Mật khẩu") },

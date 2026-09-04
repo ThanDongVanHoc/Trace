@@ -1,6 +1,9 @@
 package com.traceapp.android.ui.auth
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -8,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.AnnotatedString
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -15,6 +19,34 @@ import org.junit.Test
 class AuthScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun loginAndRegistration_keepSeparateCredentials() {
+        composeRule.setContent {
+            MaterialTheme {
+                AuthScreen(
+                    state = AuthUiState(initializing = false),
+                    onLogin = { _, _ -> },
+                    onRegister = { _, _, _ -> },
+                    onClearError = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("email").performTextInput("login@example.com")
+        composeRule.onNodeWithTag("mode_register").performClick()
+        composeRule.onNodeWithTag("email").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")),
+        )
+        composeRule.onNodeWithTag("email").performTextInput("register@example.com")
+        composeRule.onNodeWithTag("mode_login").performClick()
+        composeRule.onNodeWithTag("email").assert(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.EditableText,
+                AnnotatedString("login@example.com"),
+            ),
+        )
+    }
 
     @Test
     fun registrationForm_validInput_submitsAllFields() {

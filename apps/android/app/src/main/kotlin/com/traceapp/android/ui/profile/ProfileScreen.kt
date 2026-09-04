@@ -46,7 +46,8 @@ fun ProfileScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { granted -> if (granted) viewModel.enableNotifications() }
+        viewModel::onNotificationPermissionResult,
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -96,7 +97,9 @@ fun ProfileScreen(
         item {
             Button(
                 onClick = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (state.notificationsEnabled) {
+                        viewModel.disableNotifications()
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     } else {
                         viewModel.enableNotifications()
@@ -106,7 +109,7 @@ fun ProfileScreen(
             ) {
                 Icon(Icons.Outlined.Notifications, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (state.notificationsEnabled) "Thông báo đã bật" else "Bật thông báo")
+                Text(if (state.notificationsEnabled) "Tắt thông báo" else "Bật thông báo")
             }
         }
         if (state.notificationsEnabled) {

@@ -2,7 +2,9 @@ package com.traceapp.android.ui.scan
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageCapture
@@ -238,6 +240,33 @@ private fun CapturedContent(
                 }
             }
         }
+        if (state.recognizedObjects.isNotEmpty()) {
+            Card(modifier = Modifier.fillMaxWidth().testTag("recognition_results")) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        "Đồ vật đã nhận diện",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    state.recognizedObjects.forEach { result ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(result.tag, modifier = Modifier.weight(1f))
+                            Text(
+                                "${(result.similarity * 100).toInt()}%",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedButton(
                 onClick = onReset,
@@ -250,7 +279,9 @@ private fun CapturedContent(
             }
             Button(
                 onClick = onAction,
-                enabled = !state.busy && (state.mode == ScanMode.RECOGNIZE || state.tag.isNotBlank()),
+                enabled = !state.busy &&
+                    !state.enrollmentSaved &&
+                    (state.mode == ScanMode.RECOGNIZE || state.tag.isNotBlank()),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.weight(1f).height(52.dp).testTag("scan_action"),
             ) {
@@ -258,7 +289,11 @@ private fun CapturedContent(
                     CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
                     Text(
-                        if (state.mode == ScanMode.TAG) "Lưu đồ vật" else "Nhận diện",
+                        when {
+                            state.enrollmentSaved -> "Đã lưu"
+                            state.mode == ScanMode.TAG -> "Lưu đồ vật"
+                            else -> "Nhận diện"
+                        },
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -338,8 +373,8 @@ private fun CapturedImage(
     modifier: Modifier = Modifier,
 ) {
     val image = requireNotNull(state.image)
-    val bitmap = remember(image.jpegBytes) {
-        BitmapFactory.decodeByteArray(image.jpegBytes, 0, image.jpegBytes.size)?.asImageBitmap()
+    val bitmap = remember(image.jpegBytes, image.rotationDegrees) {
+        decodeCapturedBitmap(image.jpegBytes, image.rotationDegrees)?.asImageBitmap()
     }
     val ratio = if (image.height > 0) image.width.toFloat() / image.height else 1f
     Box(
@@ -377,4 +412,12 @@ private fun CapturedImage(
             }
         }
     }
+}
+
+private fun decodeCapturedBitmap(bytes: ByteArray, rotationDegrees: Int): Bitmap? {
+    val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+    val degrees = ((rotationDegrees % 360) + 360) % 360
+    if (degrees == 0) return decoded
+    val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+    return Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
 }

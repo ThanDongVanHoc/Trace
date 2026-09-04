@@ -19,6 +19,9 @@ interface EnrollmentApi {
 }
 
 interface VisualEncoder {
+    /** Loads the on-device model before the first user operation. */
+    suspend fun warmUp(): TraceResult<Unit> = TraceResult.Success(Unit)
+
     suspend fun encode(
         image: ImageInput,
         roi: NormalizedRect? = null,

@@ -3,6 +3,7 @@ package com.traceapp.android.ui.profile
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
+import com.traceapp.android.notification.TraceNotificationSettings
 import com.traceapp.android.notification.TraceNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,14 +22,16 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val notifier: TraceNotifier,
+    private val settings: TraceNotificationSettings,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(
-        ProfileUiState(notificationsEnabled = notificationsAllowed()),
+        ProfileUiState(notificationsEnabled = settings.isEnabled() && notificationsAllowed()),
     )
     val state: StateFlow<ProfileUiState> = mutableState.asStateFlow()
 
     fun enableNotifications() {
         val enabled = notificationsAllowed()
+        settings.setEnabled(enabled)
         mutableState.value = ProfileUiState(
             notificationsEnabled = enabled,
             message = if (enabled) "Thông báo local đã bật." else "Quyền thông báo chưa được cấp.",
@@ -36,9 +39,35 @@ class ProfileViewModel @Inject constructor(
         )
     }
 
-    fun sendTestNotification() {
-        if (!notificationsAllowed()) {
+    fun disableNotifications() {
+        settings.setEnabled(false)
+        notifier.cancelAll()
+        mutableState.value = ProfileUiState(
+            notificationsEnabled = false,
+            message = "Thông báo local đã tắt.",
+        )
+    }
+
+    fun onNotificationPermissionResult(granted: Boolean) {
+        if (granted) {
             enableNotifications()
+        } else {
+            settings.setEnabled(false)
+            mutableState.value = ProfileUiState(
+                notificationsEnabled = false,
+                message = "Quyền thông báo chưa được cấp.",
+                isError = true,
+            )
+        }
+    }
+
+    fun sendTestNotification() {
+        if (!settings.isEnabled() || !notificationsAllowed()) {
+            mutableState.value = ProfileUiState(
+                notificationsEnabled = false,
+                message = "Hãy bật thông báo trước khi gửi thử.",
+                isError = true,
+            )
             return
         }
         notifier.testNotification()

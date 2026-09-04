@@ -1,5 +1,8 @@
 package com.traceapp.android.ui.find
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,9 +16,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.LocationOff
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.traceapp.android.ui.home.ObjectMemoryUiState
@@ -42,6 +49,9 @@ fun FindScreen(
     var query by remember { mutableStateOf("") }
     val filtered = remember(query, state.references) {
         state.references.filter { it.tag.contains(query.trim(), ignoreCase = true) }
+    }
+    val selectable = remember(filtered, state.selected?.objectId) {
+        filtered.filterNot { it.objectId == state.selected?.objectId }
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -84,8 +94,8 @@ fun FindScreen(
                     )
                 }
             }
-        } else {
-            items(filtered, key = { it.objectId }) { reference ->
+        } else if (selectable.isNotEmpty()) {
+            items(selectable, key = { it.objectId }) { reference ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -115,6 +125,7 @@ fun FindScreen(
 
 @Composable
 private fun LastSeenCard(tag: String, sighting: Sighting?) {
+    val context = LocalContext.current
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -130,10 +141,33 @@ private fun LastSeenCard(tag: String, sighting: Sighting?) {
             } else {
                 Text("Lần cuối: ${DateFormat.getDateTimeInstance().format(Date(sighting.detectedAtEpochMillis))}")
                 sighting.location?.let {
-                    Text("Vị trí: %.5f, %.5f · sai số %.0f m".format(it.latitude, it.longitude, it.accuracyMeters))
+                    Text("Đã lưu vị trí · độ chính xác khoảng %.0f m".format(it.accuracyMeters))
+                    FilledTonalButton(
+                        onClick = { openDirections(context, it.latitude, it.longitude, tag) },
+                        modifier = Modifier.fillMaxWidth().testTag("open_directions"),
+                    ) {
+                        Icon(Icons.Outlined.Navigation, contentDescription = null)
+                        Text("Mở chỉ đường")
+                    }
                 } ?: Text("Không có quyền/vị trí GPS ở lần ghi nhận này.")
                 Text("Độ tin cậy: ${(sighting.confidence * 100).toInt()}%")
             }
         }
+    }
+}
+
+private fun openDirections(context: Context, latitude: Double, longitude: Double, tag: String) {
+    val query = Uri.encode("$latitude,$longitude ($tag)")
+    val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=$query"))
+    if (mapIntent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(mapIntent)
+        return
+    }
+    val browserIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude"),
+    )
+    if (browserIntent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(browserIntent)
     }
 }

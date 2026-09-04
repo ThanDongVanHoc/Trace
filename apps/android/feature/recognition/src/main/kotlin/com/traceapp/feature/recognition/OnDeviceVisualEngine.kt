@@ -42,6 +42,15 @@ class OnDeviceVisualEngine @Inject constructor(
 ) : VisualEncoder, RecognitionApi {
     private val runtime by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { createRuntime() }
 
+    override suspend fun warmUp(): TraceResult<Unit> = withContext(Dispatchers.Default) {
+        try {
+            runtime
+            TraceResult.Success(Unit)
+        } catch (failure: Exception) {
+            modelFailure(failure)
+        }
+    }
+
     override suspend fun encode(
         image: ImageInput,
         roi: NormalizedRect?,
@@ -91,27 +100,31 @@ class OnDeviceVisualEngine @Inject constructor(
                 val startedAt = System.nanoTime()
                 val image = decodeAndRotate(request.image)
                 val candidates = mutableListOf<ObjectDetection>()
-                candidates += match(
+                bestReferenceMatch(
                     extractEmbedding(image),
                     references,
                     request.minimumSimilarity,
                     NormalizedRect.FullImage,
-                )
+                    MODEL_NAME,
+                    MODEL_VERSION,
+                )?.let(candidates::add)
 
                 // Detection is an enhancement. Full-image matching still works if SSD cannot produce boxes.
                 runCatching { detectObjects(image) }.getOrDefault(emptyList()).forEach { box ->
                     val crop = cropWithPadding(image, box)
                     if (crop.width >= MIN_CROP_SIZE && crop.height >= MIN_CROP_SIZE) {
-                        candidates += match(
+                        bestReferenceMatch(
                             extractEmbedding(crop),
                             references,
                             request.minimumSimilarity,
                             box.toRect(),
-                        )
+                            MODEL_NAME,
+                            MODEL_VERSION,
+                        )?.let(candidates::add)
                     }
                 }
 
-                val detections = merge(candidates, request.maximumResults)
+                val detections = mergeDetections(candidates, request.maximumResults)
                 TraceResult.Success(
                     RecognizeResponse(
                         detections = detections.ifEmpty {
@@ -320,42 +333,6 @@ class OnDeviceVisualEngine @Inject constructor(
         return Bitmap.createBitmap(image, left, top, right - left, bottom - top)
     }
 
-    private fun match(
-        candidate: FloatArray,
-        references: List<ObjectReference>,
-        threshold: Float,
-        box: NormalizedRect,
-    ): List<ObjectDetection> = references.mapNotNull { reference ->
-        val score = reference.embeddings
-            .asSequence()
-            .filter {
-                it.modelName == MODEL_NAME &&
-                    it.modelVersion == MODEL_VERSION &&
-                    it.values.size == candidate.size
-            }
-            .maxOfOrNull { CosineSimilarity.score(candidate, it.values) }
-            ?: return@mapNotNull null
-        ObjectDetection(
-            objectId = reference.objectId.takeIf { score >= threshold },
-            boundingBox = box.takeIf { score >= threshold },
-            similarity = score,
-            status = if (score >= threshold) MatchStatus.MATCHED else MatchStatus.UNKNOWN,
-        )
-    }
-
-    private fun merge(values: List<ObjectDetection>, limit: Int): List<ObjectDetection> {
-        val matched = values.asSequence()
-            .filter { it.status == MatchStatus.MATCHED && it.objectId != null }
-            .sortedByDescending { it.similarity }
-            .distinctBy { it.objectId }
-            .take(limit)
-            .toList()
-        if (matched.isNotEmpty()) return matched
-        return values.maxByOrNull { it.similarity }?.let {
-            listOf(it.copy(objectId = null, boundingBox = null, status = MatchStatus.UNKNOWN))
-        }.orEmpty()
-    }
-
     private fun flatten(value: Any): FloatArray {
         val result = ArrayList<Float>(EMBEDDING_DIMENSIONS)
         fun visit(current: Any?) {
@@ -427,4 +404,46 @@ class OnDeviceVisualEngine @Inject constructor(
         const val EMBEDDING_ASSET = "models/mobilenet_v3_small.onnx"
         const val DETECTION_ASSET = "models/ssd_mobilenet_v2.onnx"
     }
+}
+
+internal fun bestReferenceMatch(
+    candidate: FloatArray,
+    references: List<ObjectReference>,
+    threshold: Float,
+    box: NormalizedRect,
+    modelName: String,
+    modelVersion: String,
+): ObjectDetection? {
+    val best = references.mapNotNull { reference ->
+        val score = reference.embeddings
+            .asSequence()
+            .filter {
+                it.modelName == modelName &&
+                    it.modelVersion == modelVersion &&
+                    it.values.size == candidate.size
+            }
+            .maxOfOrNull { CosineSimilarity.score(candidate, it.values) }
+            ?: return@mapNotNull null
+        reference to score
+    }.maxByOrNull { it.second } ?: return null
+    val (reference, score) = best
+    return ObjectDetection(
+        objectId = reference.objectId.takeIf { score >= threshold },
+        boundingBox = box.takeIf { score >= threshold },
+        similarity = score,
+        status = if (score >= threshold) MatchStatus.MATCHED else MatchStatus.UNKNOWN,
+    )
+}
+
+internal fun mergeDetections(values: List<ObjectDetection>, limit: Int): List<ObjectDetection> {
+    val matched = values.asSequence()
+        .filter { it.status == MatchStatus.MATCHED && it.objectId != null }
+        .sortedByDescending { it.similarity }
+        .distinctBy { it.objectId }
+        .take(limit)
+        .toList()
+    if (matched.isNotEmpty()) return matched
+    return values.maxByOrNull { it.similarity }?.let {
+        listOf(it.copy(objectId = null, boundingBox = null, status = MatchStatus.UNKNOWN))
+    }.orEmpty()
 }

@@ -1,5 +1,6 @@
 package com.traceapp.android.ui.shell
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,8 +45,20 @@ fun TraceShell(
     objectViewModel: ObjectMemoryViewModel = hiltViewModel(),
 ) {
     var destination by remember { mutableStateOf(Destination.HOME) }
+    val destinationHistory = remember { mutableStateListOf<Destination>() }
     var dataRevision by remember { mutableIntStateOf(0) }
     val objectState by objectViewModel.state.collectAsStateWithLifecycle()
+
+    fun navigateTo(target: Destination) {
+        if (target == destination) return
+        destinationHistory.remove(target)
+        destinationHistory += destination
+        destination = target
+    }
+
+    BackHandler(enabled = destinationHistory.isNotEmpty()) {
+        destination = destinationHistory.removeAt(destinationHistory.lastIndex)
+    }
 
     LaunchedEffect(user.id, dataRevision) {
         objectViewModel.refresh()
@@ -56,7 +70,7 @@ fun TraceShell(
                 Destination.entries.forEach { item ->
                     NavigationBarItem(
                         selected = destination == item,
-                        onClick = { destination = item },
+                        onClick = { navigateTo(item) },
                         icon = { Icon(item.icon, contentDescription = item.label) },
                         label = { Text(item.label) },
                     )
@@ -69,14 +83,14 @@ fun TraceShell(
                 Destination.HOME -> HomeScreen(
                     state = objectState,
                     displayName = user.displayName,
-                    onScan = { destination = Destination.SCAN },
-                    onFind = { destination = Destination.FIND },
+                    onScan = { navigateTo(Destination.SCAN) },
+                    onFind = { navigateTo(Destination.FIND) },
                 )
                 Destination.SCAN -> ScanScreen(
                     onDataChanged = { dataRevision++ },
                     onOpenFind = {
                         objectViewModel.refresh()
-                        destination = Destination.FIND
+                        navigateTo(Destination.FIND)
                     },
                 )
                 Destination.FIND -> FindScreen(objectState, objectViewModel::findLastSeen)

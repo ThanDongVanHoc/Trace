@@ -20,16 +20,34 @@ import javax.inject.Singleton
 @Singleton
 class TraceNotifier @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val settings: TraceNotificationSettings,
 ) {
     fun sightingRecorded(tag: String) {
         notify("TRACE đã ghi nhớ", "Đã lưu lần xuất hiện mới của $tag.", tag.hashCode())
+    }
+
+    fun sightingsRecorded(tags: List<String>) {
+        val distinctTags = tags.distinct()
+        if (distinctTags.isEmpty()) return
+        if (distinctTags.size == 1) {
+            sightingRecorded(distinctTags.single())
+        } else {
+            notify(
+                "TRACE đã nhận diện ${distinctTags.size} đồ vật",
+                distinctTags.joinToString(limit = 3, truncated = "…"),
+                MULTI_SIGHTING_NOTIFICATION_ID,
+            )
+        }
     }
 
     fun testNotification() {
         notify("TRACE hoạt động độc lập", "Thông báo local đã sẵn sàng.", 1)
     }
 
+    fun cancelAll() = NotificationManagerCompat.from(context).cancelAll()
+
     private fun notify(title: String, body: String, id: Int) {
+        if (!settings.isEnabled()) return
         createChannel(context)
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -54,6 +72,7 @@ class TraceNotifier @Inject constructor(
 
     companion object {
         private const val CHANNEL_ID = "trace_local_reminders"
+        private const val MULTI_SIGHTING_NOTIFICATION_ID = 2
 
         fun createChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

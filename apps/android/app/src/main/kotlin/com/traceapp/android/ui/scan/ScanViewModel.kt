@@ -24,6 +24,12 @@ import kotlinx.coroutines.launch
 
 enum class ScanMode { TAG, RECOGNIZE }
 
+data class RecognizedObjectUi(
+    val objectId: String,
+    val tag: String,
+    val similarity: Float,
+)
+
 data class ScanUiState(
     val mode: ScanMode = ScanMode.TAG,
     val image: ImageInput? = null,
@@ -34,6 +40,8 @@ data class ScanUiState(
     val isError: Boolean = false,
     val dataRevision: Int = 0,
     val canOpenFind: Boolean = false,
+    val enrollmentSaved: Boolean = false,
+    val recognizedObjects: List<RecognizedObjectUi> = emptyList(),
 )
 
 @HiltViewModel
@@ -53,7 +61,16 @@ class ScanViewModel @Inject constructor(
     }
 
     fun setImage(image: ImageInput) {
-        mutableState.update { it.copy(image = image, message = null, canOpenFind = false) }
+        mutableState.update {
+            it.copy(
+                image = image,
+                message = null,
+                isError = false,
+                canOpenFind = false,
+                enrollmentSaved = false,
+                recognizedObjects = emptyList(),
+            )
+        }
     }
 
     fun setRoi(roi: NormalizedRect) = mutableState.update { it.copy(roi = roi) }
@@ -61,13 +78,21 @@ class ScanViewModel @Inject constructor(
     fun setTag(tag: String) = mutableState.update { it.copy(tag = tag.take(80)) }
 
     fun resetCapture() = mutableState.update {
-        it.copy(image = null, message = null, busy = false, canOpenFind = false)
+        it.copy(
+            image = null,
+            message = null,
+            isError = false,
+            busy = false,
+            canOpenFind = false,
+            enrollmentSaved = false,
+            recognizedObjects = emptyList(),
+        )
     }
 
     fun enroll() {
         val snapshot = mutableState.value
         val image = snapshot.image ?: return
-        if (snapshot.busy) return
+        if (snapshot.busy || snapshot.enrollmentSaved) return
         viewModelScope.launch {
             mutableState.update { it.copy(busy = true, message = null) }
             when (
@@ -81,6 +106,7 @@ class ScanViewModel @Inject constructor(
                         message = "Đã lưu tag “${snapshot.tag.trim()}”.",
                         isError = false,
                         dataRevision = it.dataRevision + 1,
+                        enrollmentSaved = true,
                     )
                 }
                 is TraceResult.Failure -> mutableState.update {
@@ -95,7 +121,15 @@ class ScanViewModel @Inject constructor(
         val image = snapshot.image ?: return
         if (snapshot.busy) return
         viewModelScope.launch {
-            mutableState.update { it.copy(busy = true, message = null, canOpenFind = false) }
+            mutableState.update {
+                it.copy(
+                    busy = true,
+                    message = null,
+                    isError = false,
+                    canOpenFind = false,
+                    recognizedObjects = emptyList(),
+                )
+            }
             val references = when (val result = objectStore.getAllReferences()) {
                 is TraceResult.Success -> result.value
                 is TraceResult.Failure -> {
@@ -118,9 +152,10 @@ class ScanViewModel @Inject constructor(
                     return@launch
                 }
             }
-            val detection = recognition.detections.firstOrNull()
-            val objectId = detection?.objectId
-            if (detection == null || detection.status == MatchStatus.UNKNOWN || objectId == null) {
+            val detections = recognition.detections
+                .filter { it.status == MatchStatus.MATCHED && it.objectId != null }
+                .distinctBy { it.objectId }
+            if (detections.isEmpty()) {
                 mutableState.update {
                     it.copy(
                         busy = false,
@@ -130,31 +165,53 @@ class ScanViewModel @Inject constructor(
                 }
                 return@launch
             }
-            val reference = references.first { it.objectId == objectId }
-            val recorded = memoryApi.recordSighting(
-                RecordSightingRequest(
-                    objectId = objectId,
-                    detectedAtEpochMillis = image.capturedAtEpochMillis,
-                    confidence = detection.similarity,
-                    boundingBox = detection.boundingBox,
-                    location = locationReader.currentOrNull(),
-                    evidenceImage = image,
-                ),
-            )
-            when (recorded) {
-                is TraceResult.Success -> {
-                    notifier.sightingRecorded(reference.tag)
-                    mutableState.update {
-                        it.copy(
-                            busy = false,
-                            message = "Đã nhận ra “${reference.tag}” (${(detection.similarity * 100).toInt()}%).",
-                            isError = false,
-                            dataRevision = it.dataRevision + 1,
-                            canOpenFind = true,
-                        )
+            val referencesById = references.associateBy { it.objectId }
+            val location = locationReader.currentOrNull()
+            val recordedObjects = mutableListOf<RecognizedObjectUi>()
+            var firstFailure: String? = null
+            detections.forEach { detection ->
+                val objectId = requireNotNull(detection.objectId)
+                val reference = referencesById[objectId] ?: return@forEach
+                when (
+                    val recorded = memoryApi.recordSighting(
+                        RecordSightingRequest(
+                            objectId = objectId,
+                            detectedAtEpochMillis = image.capturedAtEpochMillis,
+                            confidence = detection.similarity,
+                            boundingBox = detection.boundingBox,
+                            location = location,
+                            evidenceImage = image,
+                        ),
+                    )
+                ) {
+                    is TraceResult.Success -> recordedObjects += RecognizedObjectUi(
+                        objectId = objectId,
+                        tag = reference.tag,
+                        similarity = detection.similarity,
+                    )
+                    is TraceResult.Failure -> if (firstFailure == null) {
+                        firstFailure = recorded.error.message
                     }
                 }
-                is TraceResult.Failure -> fail(recorded.error.message)
+            }
+            if (recordedObjects.isEmpty()) {
+                fail(firstFailure ?: "Không thể lưu kết quả nhận diện.")
+                return@launch
+            }
+            notifier.sightingsRecorded(recordedObjects.map { it.tag })
+            mutableState.update {
+                it.copy(
+                    busy = false,
+                    message = if (recordedObjects.size == 1) {
+                        "Đã nhận ra “${recordedObjects.single().tag}”."
+                    } else {
+                        "Đã nhận diện ${recordedObjects.size} đồ vật trong ảnh."
+                    },
+                    isError = false,
+                    dataRevision = it.dataRevision + 1,
+                    canOpenFind = true,
+                    recognizedObjects = recordedObjects,
+                )
             }
         }
     }

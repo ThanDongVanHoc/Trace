@@ -12,6 +12,8 @@ import com.traceapp.core.contracts.TraceError
 import com.traceapp.core.contracts.TraceErrorCode
 import com.traceapp.core.contracts.TraceResult
 import com.traceapp.core.contracts.VisualEncoder
+import java.text.Normalizer
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,6 +39,19 @@ class EnrollmentService @Inject constructor(
         if (request.image.jpegBytes.isEmpty()) {
             return TraceResult.Failure(
                 TraceError(TraceErrorCode.INVALID_INPUT, "Image is empty"),
+            )
+        }
+
+        val existingReferences = when (val result = objectStore.getAllReferences()) {
+            is TraceResult.Success -> result.value
+            is TraceResult.Failure -> return result
+        }
+        if (existingReferences.any { normalizeTag(it.tag) == normalizeTag(tag) }) {
+            return TraceResult.Failure(
+                TraceError(
+                    TraceErrorCode.INVALID_INPUT,
+                    "Tên “$tag” đã được dùng. Hãy chọn một tên khác để tránh nhầm lẫn.",
+                ),
             )
         }
 
@@ -87,5 +102,10 @@ class EnrollmentService @Inject constructor(
 
     private companion object {
         const val MINIMUM_ROI_AREA = 0.01f
+
+        fun normalizeTag(value: String): String = Normalizer
+            .normalize(value.trim(), Normalizer.Form.NFC)
+            .replace(Regex("\\s+"), " ")
+            .lowercase(Locale.ROOT)
     }
 }
