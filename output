@@ -1,0 +1,208 @@
+> Task :contracts:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :member1-enrollment:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :member4-vault:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dev-server:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :member2-recognition:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :member3-memory:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :storage:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :storage:processResources NO-SOURCE
+> Task :member1-enrollment:processResources NO-SOURCE
+> Task :member3-memory:processResources NO-SOURCE
+> Task :member2-recognition:processResources NO-SOURCE
+> Task :dev-server:processResources UP-TO-DATE
+> Task :member4-vault:processResources NO-SOURCE
+> Task :storage:processTestResources NO-SOURCE
+> Task :member1-enrollment:processTestResources NO-SOURCE
+> Task :dev-server:processTestResources NO-SOURCE
+> Task :member4-vault:processTestResources NO-SOURCE
+> Task :member3-memory:processTestResources NO-SOURCE
+> Task :member2-recognition:processTestResources NO-SOURCE
+> Task :contracts:compileKotlin UP-TO-DATE
+> Task :contracts:compileJava NO-SOURCE
+> Task :contracts:processResources NO-SOURCE
+> Task :contracts:classes UP-TO-DATE
+> Task :contracts:jar UP-TO-DATE
+> Task :member4-vault:compileKotlin UP-TO-DATE
+> Task :member4-vault:compileJava NO-SOURCE
+> Task :member4-vault:classes UP-TO-DATE
+> Task :storage:compileKotlin UP-TO-DATE
+> Task :member3-memory:compileKotlin UP-TO-DATE
+> Task :member2-recognition:compileKotlin UP-TO-DATE
+> Task :storage:compileJava NO-SOURCE
+> Task :storage:classes UP-TO-DATE
+> Task :member1-enrollment:compileKotlin UP-TO-DATE
+> Task :member2-recognition:compileJava NO-SOURCE
+> Task :member3-memory:compileJava NO-SOURCE
+> Task :member2-recognition:classes UP-TO-DATE
+> Task :member1-enrollment:compileJava NO-SOURCE
+> Task :member1-enrollment:classes UP-TO-DATE
+> Task :storage:jar UP-TO-DATE
+> Task :member2-recognition:jar UP-TO-DATE
+> Task :member1-enrollment:jar UP-TO-DATE
+> Task :contracts:compileTestKotlin UP-TO-DATE
+> Task :contracts:compileTestJava NO-SOURCE
+> Task :member4-vault:jar UP-TO-DATE
+> Task :member3-memory:classes UP-TO-DATE
+> Task :contracts:processTestResources NO-SOURCE
+> Task :contracts:testClasses UP-TO-DATE
+> Task :storage:compileTestKotlin UP-TO-DATE
+> Task :member3-memory:jar UP-TO-DATE
+> Task :storage:compileTestJava NO-SOURCE
+> Task :storage:testClasses UP-TO-DATE
+> Task :member2-recognition:compileTestKotlin UP-TO-DATE
+> Task :member2-recognition:compileTestJava NO-SOURCE
+> Task :member2-recognition:testClasses UP-TO-DATE
+> Task :contracts:test UP-TO-DATE
+> Task :storage:test UP-TO-DATE
+> Task :member2-recognition:test UP-TO-DATE
+> Task :member1-enrollment:compileTestKotlin UP-TO-DATE
+> Task :member1-enrollment:compileTestJava NO-SOURCE
+> Task :member1-enrollment:testClasses UP-TO-DATE
+> Task :member3-memory:compileTestKotlin UP-TO-DATE
+> Task :member4-vault:compileTestKotlin UP-TO-DATE
+> Task :member3-memory:compileTestJava NO-SOURCE
+> Task :member4-vault:compileTestJava NO-SOURCE
+> Task :member4-vault:testClasses UP-TO-DATE
+> Task :member3-memory:testClasses UP-TO-DATE
+> Task :member1-enrollment:test UP-TO-DATE
+> Task :member4-vault:test UP-TO-DATE
+> Task :dev-server:compileKotlin UP-TO-DATE
+> Task :dev-server:compileJava NO-SOURCE
+> Task :dev-server:classes UP-TO-DATE
+> Task :dev-server:jar UP-TO-DATE
+> Task :dev-server:compileTestKotlin UP-TO-DATE
+> Task :dev-server:compileTestJava NO-SOURCE
+> Task :dev-server:testClasses UP-TO-DATE
+> Task :dev-server:test UP-TO-DATE
+
+> Task :member3-memory:test FAILED
+
+MemoryAlgorithmTest > record persists a far gps sighting within two minutes() STANDARD_OUT
+    recording since no previous sighting
+    Duplicated: Previous time is 0, current time is 5000
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record persists a far gps sighting within two minutes() FAILED
+    org.opentest4j.AssertionFailedError at MemoryAlgorithmTest.kt:90
+
+MemoryAlgorithmTest > record dedups when the previous sighting has no gps() STANDARD_OUT
+    recording since no previous sighting
+    Duplicated: Previous time is 0, current time is 5000
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record dedups when the previous sighting has no gps() PASSED
+
+MemoryAlgorithmTest > timeline applies the requested limit() STANDARD_OUT
+    recording since no previous sighting
+    Is previous null? true
+    Is current null? true
+    Duplicated, no writing
+    Is previous null? true
+    Is current null? true
+    Duplicated, no writing
+    Is previous null? true
+    Is current null? true
+    Duplicated, no writing
+    Is previous null? true
+    Is current null? true
+    Duplicated, no writing
+
+MemoryAlgorithmTest > timeline applies the requested limit() FAILED
+    org.opentest4j.AssertionFailedError at MemoryAlgorithmTest.kt:208
+
+MemoryAlgorithmTest > record dedups a close gps sighting within two minutes() STANDARD_OUT
+    recording since no previous sighting
+    Duplicated: Previous time is 0, current time is 5000
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record dedups a close gps sighting within two minutes() PASSED
+
+MemoryAlgorithmTest > find returns lastSeen null for an object with no sightings() PASSED
+
+MemoryAlgorithmTest > find returns the latest sighting without an input image() STANDARD_OUT
+    recording since no previous sighting
+    Duplicated: Previous time is 1000, current time is 2000
+    Duplicated, no writing
+
+MemoryAlgorithmTest > find returns the latest sighting without an input image() FAILED
+    org.opentest4j.AssertionFailedError at MemoryAlgorithmTest.kt:153
+
+MemoryAlgorithmTest > find places objects never seen last() STANDARD_OUT
+    recording since no previous sighting
+    recording since no previous sighting
+
+MemoryAlgorithmTest > find places objects never seen last() PASSED
+
+MemoryAlgorithmTest > record persists a same-location sighting outside the two-minute window() STANDARD_OUT
+    recording since no previous sighting
+    Is previous null? LocationInput(latitude=10.7769, longitude=106.7009, accuracyMeters=null)
+    Is current null? LocationInput(latitude=10.7769, longitude=106.7009, accuracyMeters=null)
+    Geographical distance between two requests: 0.0
+    Return true due to too close distance
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record persists a same-location sighting outside the two-minute window() FAILED
+    org.opentest4j.AssertionFailedError at MemoryAlgorithmTest.kt:99
+
+MemoryAlgorithmTest > record dedups when the new request has no gps within two minutes() STANDARD_OUT
+    recording since no previous sighting
+    Duplicated: Previous time is 0, current time is 5000
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record dedups when the new request has no gps within two minutes() PASSED
+
+MemoryAlgorithmTest > record persists a sighting outside the two-minute window() STANDARD_OUT
+    recording since no previous sighting
+    Is previous null? true
+    Is current null? true
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record persists a sighting outside the two-minute window() FAILED
+    org.opentest4j.AssertionFailedError at MemoryAlgorithmTest.kt:63
+
+MemoryAlgorithmTest > record returns the existing latest sighting when deduped() STANDARD_OUT
+    recording since no previous sighting
+    Duplicated: Previous time is 0, current time is 5000
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record returns the existing latest sighting when deduped() PASSED
+
+MemoryAlgorithmTest > record persists a sighting exactly two minutes later() STANDARD_OUT
+    recording since no previous sighting
+    Is previous null? true
+    Is current null? true
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record persists a sighting exactly two minutes later() FAILED
+    org.opentest4j.AssertionFailedError at MemoryAlgorithmTest.kt:72
+
+MemoryAlgorithmTest > record persists the first sighting for an object() STANDARD_OUT
+    recording since no previous sighting
+
+MemoryAlgorithmTest > record persists the first sighting for an object() PASSED
+
+MemoryAlgorithmTest > find orders results by most recent sighting first() STANDARD_OUT
+    recording since no previous sighting
+    recording since no previous sighting
+
+MemoryAlgorithmTest > find orders results by most recent sighting first() PASSED
+
+MemoryAlgorithmTest > timeline returns sightings in descending order() STANDARD_OUT
+    recording since no previous sighting
+    Is previous null? true
+    Is current null? true
+    Duplicated, no writing
+    Is previous null? true
+    Is current null? true
+    Duplicated, no writing
+
+MemoryAlgorithmTest > timeline returns sightings in descending order() FAILED
+    org.opentest4j.AssertionFailedError at MemoryAlgorithmTest.kt:195
+
+MemoryAlgorithmTest > record dedups a second sighting within two minutes when gps is absent() STANDARD_OUT
+    recording since no previous sighting
+    Duplicated: Previous time is 1000, current time is 2000
+    Duplicated, no writing
+
+MemoryAlgorithmTest > record dedups a second sighting within two minutes when gps is absent() PASSED
+29 actionable tasks: 1 executed, 28 up-to-date
