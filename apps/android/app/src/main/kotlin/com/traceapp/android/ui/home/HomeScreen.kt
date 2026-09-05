@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.traceapp.android.ui.pattern.UsageAxis
+import com.traceapp.android.ui.pattern.UsageChartCard
 import com.traceapp.core.contracts.ObjectReference
 
 @Composable
@@ -43,6 +45,8 @@ fun HomeScreen(
     displayName: String,
     onScan: () -> Unit,
     onFind: () -> Unit,
+    onUsageAxisChange: (UsageAxis) -> Unit,
+    onUsageStep: (Int) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -57,6 +61,19 @@ fun HomeScreen(
             Text(
                 "Bạn muốn ghi nhớ hay tìm lại đồ vật?",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        item {
+            UsageChartCard(
+                title = "Tổng quan",
+                subtitle = "Theo giờ hoặc ngày trong tuần",
+                axis = state.usageAxis,
+                periodStartMillis = state.usagePeriodStartMillis,
+                series = state.appUsage,
+                loading = state.usageLoading,
+                canStepForward = state.usageCanStepForward,
+                onAxisChange = onUsageAxisChange,
+                onStep = onUsageStep,
             )
         }
         item {

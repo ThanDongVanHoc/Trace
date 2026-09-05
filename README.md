@@ -18,11 +18,24 @@ Studio.
 .\build-android.bat submission
 ```
 
+Trên Linux/macOS:
+
+```bash
+./build-android.sh check
+./build-android.sh submission
+```
+
 APK được tạo tại `apk/app-release.apk`. Cài vào thiết bị Android 7.0/API 24 trở
 lên bằng:
 
 ```powershell
 adb install -r .\apk\app-release.apk
+```
+
+Hoặc trên Linux/macOS:
+
+```bash
+adb install -r ./apk/app-release.apk
 ```
 
 Xem hướng dẫn môi trường, build Google Play và release signing tại

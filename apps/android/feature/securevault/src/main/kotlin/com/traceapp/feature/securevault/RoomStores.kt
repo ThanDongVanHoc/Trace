@@ -262,6 +262,33 @@ class RoomSightingStore @Inject constructor(
         }
     }
 
+    override suspend fun getAllTimestamps(
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+    ): TraceResult<List<Long>> = withContext(Dispatchers.IO) {
+        val accountId = accountSession.currentAccountId() ?: return@withContext unauthorized()
+        try {
+            TraceResult.Success(sightingDao.getAllTimestamps(accountId, fromEpochMillis, toEpochMillis))
+        } catch (failure: Exception) {
+            failure.toTraceFailure("Could not read usage timestamps")
+        }
+    }
+
+    override suspend fun getObjectTimestamps(
+        objectId: String,
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+    ): TraceResult<List<Long>> = withContext(Dispatchers.IO) {
+        val accountId = accountSession.currentAccountId() ?: return@withContext unauthorized()
+        try {
+            TraceResult.Success(
+                sightingDao.getObjectTimestamps(accountId, objectId, fromEpochMillis, toEpochMillis),
+            )
+        } catch (failure: Exception) {
+            failure.toTraceFailure("Could not read usage timestamps")
+        }
+    }
+
     private fun Sighting.toEntity(accountId: String): LocalSightingEntity = LocalSightingEntity(
         sightingId = sightingId,
         objectId = objectId,

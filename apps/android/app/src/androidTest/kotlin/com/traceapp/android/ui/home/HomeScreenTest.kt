@@ -23,6 +23,8 @@ class HomeScreenTest {
                     displayName = "Minh Nguyen",
                     onScan = { scanClicks++ },
                     onFind = { findClicks++ },
+                    onUsageAxisChange = {},
+                    onUsageStep = {},
                 )
             }
         }

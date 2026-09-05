@@ -89,6 +89,39 @@ interface SightingDao {
         """,
     )
     suspend fun getPending(accountId: String, limit: Int): List<LocalSightingEntity>
+
+    @Query(
+        """
+        SELECT s.detected_at_epoch_ms FROM local_sightings s
+        INNER JOIN local_objects o ON o.object_id = s.object_id
+        WHERE o.account_id = :accountId
+          AND s.detected_at_epoch_ms >= :fromEpochMillis
+          AND s.detected_at_epoch_ms < :toEpochMillis
+        ORDER BY s.detected_at_epoch_ms
+        """,
+    )
+    suspend fun getAllTimestamps(
+        accountId: String,
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+    ): List<Long>
+
+    @Query(
+        """
+        SELECT s.detected_at_epoch_ms FROM local_sightings s
+        INNER JOIN local_objects o ON o.object_id = s.object_id
+        WHERE o.account_id = :accountId AND s.object_id = :objectId
+          AND s.detected_at_epoch_ms >= :fromEpochMillis
+          AND s.detected_at_epoch_ms < :toEpochMillis
+        ORDER BY s.detected_at_epoch_ms
+        """,
+    )
+    suspend fun getObjectTimestamps(
+        accountId: String,
+        objectId: String,
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+    ): List<Long>
 }
 
 @Dao

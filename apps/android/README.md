@@ -10,22 +10,37 @@ HTTP client, API URL, JWT, Firebase hay backend runtime.
 - Android SDK Platform 36 và Build Tools 35 trở lên.
 - `adb` chỉ cần khi muốn cài APK từ command line.
 
-`build-android.ps1` ở root tự tìm JDK 21, kể cả khi Java mặc định của Windows là
-Java 26. Gradle tìm Android SDK qua `ANDROID_HOME`, `ANDROID_SDK_ROOT`, hoặc file
-không commit `apps/android/local.properties`:
+`build-android.ps1` (Windows) và `build-android.sh` (Linux/macOS) ở root tự tìm
+JDK 21, kể cả khi Java mặc định của hệ thống khác. Gradle tìm Android SDK qua
+`ANDROID_HOME`, `ANDROID_SDK_ROOT`, hoặc file không commit
+`apps/android/local.properties`:
 
 ```properties
+# Windows
 sdk.dir=C\:\\Users\\YOUR_NAME\\AppData\\Local\\Android\\Sdk
+
+# Linux/macOS
+sdk.dir=/home/YOUR_NAME/Android/Sdk
 ```
 
 ## Lệnh chuẩn (chạy từ root repository)
 
 ```powershell
+# Windows
 .\build-android.bat build       # APK debug cài được
 .\build-android.bat check       # unit test + lint + APK debug
 .\build-android.bat install     # cài lên thiết bị đang nối adb
 .\build-android.bat submission  # apk/app-release.apk, ARM64, signed debug
 .\build-android.bat bundle      # release AAB cho Google Play
+```
+
+```bash
+# Linux/macOS
+./build-android.sh build       # APK debug cài được
+./build-android.sh check       # unit test + lint + APK debug
+./build-android.sh install     # cài lên thiết bị đang nối adb
+./build-android.sh submission  # apk/app-release.apk, ARM64, signed debug
+./build-android.sh bundle      # release AAB cho Google Play
 ```
 
 `submission` tạo APK ARM64 nhỏ hơn giới hạn một file của GitHub. Đây là

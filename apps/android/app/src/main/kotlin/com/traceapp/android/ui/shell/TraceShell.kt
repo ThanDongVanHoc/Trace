@@ -85,6 +85,8 @@ fun TraceShell(
                     displayName = user.displayName,
                     onScan = { navigateTo(Destination.SCAN) },
                     onFind = { navigateTo(Destination.FIND) },
+                    onUsageAxisChange = objectViewModel::setUsageAxis,
+                    onUsageStep = objectViewModel::stepUsage,
                 )
                 Destination.SCAN -> ScanScreen(
                     onDataChanged = { dataRevision++ },
@@ -93,7 +95,13 @@ fun TraceShell(
                         navigateTo(Destination.FIND)
                     },
                 )
-                Destination.FIND -> FindScreen(objectState, objectViewModel::findLastSeen)
+                Destination.FIND -> FindScreen(
+                    state = objectState,
+                    onFind = objectViewModel::findLastSeen,
+                    onDelete = objectViewModel::delete,
+                    onUsageAxisChange = objectViewModel::setUsageAxis,
+                    onUsageStep = objectViewModel::stepUsage,
+                )
                 Destination.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
             }
         }

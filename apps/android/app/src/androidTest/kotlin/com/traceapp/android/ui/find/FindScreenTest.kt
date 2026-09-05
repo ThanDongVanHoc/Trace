@@ -49,6 +49,9 @@ class FindScreenTest {
                         selected = FindLastSeenResponse(reference.objectId, reference.tag, sighting),
                     ),
                     onFind = {},
+                    onDelete = {},
+                    onUsageAxisChange = {},
+                    onUsageStep = {},
                 )
             }
         }

@@ -19,6 +19,16 @@ interface SightingStore {
     suspend fun getLatest(objectId: String): TraceResult<Sighting?>
     suspend fun getTimeline(objectId: String, limit: Int = 50): TraceResult<List<Sighting>>
     suspend fun getPending(limit: Int = 100): TraceResult<List<Sighting>>
+
+    /** Detection timestamps across all of the account's objects within [fromEpochMillis, toEpochMillis). */
+    suspend fun getAllTimestamps(fromEpochMillis: Long, toEpochMillis: Long): TraceResult<List<Long>>
+
+    /** Detection timestamps for a single object within [fromEpochMillis, toEpochMillis). */
+    suspend fun getObjectTimestamps(
+        objectId: String,
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+    ): TraceResult<List<Long>>
 }
 
 enum class SecureAssetType { REFERENCE_IMAGE, SIGHTING_EVIDENCE }
