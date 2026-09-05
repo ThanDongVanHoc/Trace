@@ -5,6 +5,17 @@ những lần chụp sau và xem nơi/thời điểm xuất hiện gần nhất.
 `final` là ứng dụng Android độc lập: camera, model ML, database, đăng nhập cục bộ,
 mã hóa và thông báo đều chạy trên điện thoại; không cần backend, Docker hay mạng.
 
+## Thành viên
+
+Nguyễn Hoàng Thuận Phát - 24125072
+Dương Gia Khương - 24125062
+Nguyễn Trọng Hùng Phong - 24125073
+Nguyễn Chí Tính - 24125019
+
+## Demo video link
+
+[Link youtube](https://youtube.com)
+
 ## Chạy nhanh
 
 Yêu cầu: JDK 21 và Android SDK (API 36, Build Tools 35+). Không bắt buộc Android
@@ -25,7 +36,7 @@ Trên Linux/macOS:
 ./build-android.sh submission
 ```
 
-APK được tạo tại `apk/app-release.apk`. Cài vào thiết bị Android 7.0/API 24 trở
+APK được tạo tại `apk/app-release.apk`. Cần xoá file trước khi build lại để tránh lỗi không ghi đè. Cài vào thiết bị Android 7.0/API 24 trở
 lên bằng:
 
 ```powershell
@@ -43,7 +54,7 @@ Xem hướng dẫn môi trường, build Google Play và release signing tại
 
 ## Luồng sản phẩm
 
-1. Tạo tài khoản cục bộ hoặc đăng nhập.
+1. Tạo tài khoản cục bộ hoặc đăng nhập. Tài khoản là ngẫu nhiên, lưu trên máy và không cần kết nối server, do đó mọi tài khoản đều có thể được đăng kí. Không có tài khoản mặc định. Không có xác thực thông tin cá nhân.
 2. Chọn **Scan → Gắn tag**, chụp ảnh, chỉnh ROI và đặt tên đồ vật.
 3. Chọn **Scan → Nhận diện**, chụp khung cảnh; MobileNetV3 + SSD MobileNet chạy
    trên thiết bị và ghi nhận lần xuất hiện nếu khớp.
