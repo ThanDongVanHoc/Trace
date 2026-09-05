@@ -7,6 +7,7 @@ import com.traceapp.core.contracts.ObjectStore
 import com.traceapp.core.contracts.SecureAssetStore
 import com.traceapp.core.contracts.Sighting
 import com.traceapp.core.contracts.SightingStore
+import com.traceapp.core.contracts.SightingTime
 import com.traceapp.core.contracts.SyncStatus
 import com.traceapp.core.contracts.TraceError
 import com.traceapp.core.contracts.TraceErrorCode
@@ -283,6 +284,22 @@ class RoomSightingStore @Inject constructor(
         try {
             TraceResult.Success(
                 sightingDao.getObjectTimestamps(accountId, objectId, fromEpochMillis, toEpochMillis),
+            )
+        } catch (failure: Exception) {
+            failure.toTraceFailure("Could not read usage timestamps")
+        }
+    }
+
+    override suspend fun getAllSightingTimes(): TraceResult<List<SightingTime>> = withContext(Dispatchers.IO) {
+        val accountId = accountSession.currentAccountId() ?: return@withContext unauthorized()
+        try {
+            TraceResult.Success(
+                sightingDao.getAllForAccount(accountId).map { entity ->
+                    SightingTime(
+                        objectId = entity.objectId,
+                        detectedAtEpochMillis = entity.detectedAtEpochMillis,
+                    )
+                },
             )
         } catch (failure: Exception) {
             failure.toTraceFailure("Could not read usage timestamps")

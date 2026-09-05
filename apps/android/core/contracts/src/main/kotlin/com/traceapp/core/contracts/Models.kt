@@ -74,3 +74,9 @@ data class Sighting(
     val evidenceAssetId: String?,
     val syncStatus: SyncStatus = SyncStatus.PENDING,
 )
+
+/** Lightweight (objectId, detection time) pair used by usage-pattern analysis (no decryption). */
+data class SightingTime(
+    val objectId: String,
+    val detectedAtEpochMillis: Long,
+)

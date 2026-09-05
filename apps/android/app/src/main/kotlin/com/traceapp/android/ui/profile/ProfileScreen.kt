@@ -17,18 +17,25 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +51,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var newTime by remember { mutableStateOf("") }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
         viewModel::onNotificationPermissionResult,
@@ -114,11 +122,68 @@ fun ProfileScreen(
         }
         if (state.notificationsEnabled) {
             item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text("Giờ nhắc hằng ngày", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Vào giờ này, TRACE sẽ gợi ý đồ vật được dùng nhiều nhất lúc đó.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        HorizontalDivider()
+                        if (state.reminderTimes.isEmpty()) {
+                            Text(
+                                "Chưa có giờ nhắc.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            state.reminderTimes.forEach { time ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(time, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                                    IconButton(onClick = { viewModel.removeReminderTime(time) }) {
+                                        Icon(
+                                            Icons.Outlined.Close,
+                                            contentDescription = "Xoá giờ $time",
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedTextField(
+                                value = newTime,
+                                onValueChange = { newTime = it },
+                                label = { Text("HH:mm") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Button(
+                                onClick = {
+                                    viewModel.addReminderTime(newTime)
+                                    newTime = ""
+                                },
+                            ) { Text("Thêm") }
+                        }
+                    }
+                }
+            }
+            item {
                 OutlinedButton(
                     onClick = viewModel::sendTestNotification,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Gửi thông báo thử")
+                    Text("Gửi thông báo thử (gợi ý đồ vật phù hợp nhất)")
                 }
             }
         }

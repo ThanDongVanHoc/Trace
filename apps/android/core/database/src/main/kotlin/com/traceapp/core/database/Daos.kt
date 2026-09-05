@@ -122,6 +122,16 @@ interface SightingDao {
         fromEpochMillis: Long,
         toEpochMillis: Long,
     ): List<Long>
+
+    @Query(
+        """
+        SELECT s.* FROM local_sightings s
+        INNER JOIN local_objects o ON o.object_id = s.object_id
+        WHERE o.account_id = :accountId
+        ORDER BY s.detected_at_epoch_ms
+        """,
+    )
+    suspend fun getAllForAccount(accountId: String): List<LocalSightingEntity>
 }
 
 @Dao

@@ -44,6 +44,15 @@ class TraceNotifier @Inject constructor(
         notify("TRACE hoạt động độc lập", "Thông báo local đã sẵn sàng.", 1)
     }
 
+    /** Announces the most usage-matched item; falls back to a generic reminder when absent. */
+    fun announceMostMatched(tag: String?) {
+        if (tag == null) {
+            notify("TRACE nhắc nhẹ", "Đã đến giờ — thử tìm một đồ vật?", REMINDER_NOTIFICATION_ID)
+        } else {
+            notify("Có thể bạn cần “$tag”", "Lúc này bạn thường hay dùng “$tag”.", REMINDER_NOTIFICATION_ID)
+        }
+    }
+
     fun cancelAll() = NotificationManagerCompat.from(context).cancelAll()
 
     private fun notify(title: String, body: String, id: Int) {
@@ -73,6 +82,7 @@ class TraceNotifier @Inject constructor(
     companion object {
         private const val CHANNEL_ID = "trace_local_reminders"
         private const val MULTI_SIGHTING_NOTIFICATION_ID = 2
+        private const val REMINDER_NOTIFICATION_ID = 3
 
         fun createChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

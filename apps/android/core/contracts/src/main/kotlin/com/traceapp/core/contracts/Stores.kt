@@ -29,6 +29,9 @@ interface SightingStore {
         fromEpochMillis: Long,
         toEpochMillis: Long,
     ): TraceResult<List<Long>>
+
+    /** Lightweight (objectId, detection time) rows for every sighting in the account. */
+    suspend fun getAllSightingTimes(): TraceResult<List<SightingTime>>
 }
 
 enum class SecureAssetType { REFERENCE_IMAGE, SIGHTING_EVIDENCE }

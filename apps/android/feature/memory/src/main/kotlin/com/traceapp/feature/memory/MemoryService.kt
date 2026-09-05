@@ -3,6 +3,7 @@ package com.traceapp.feature.memory
 import com.traceapp.core.contracts.FindLastSeenResponse
 import com.traceapp.core.contracts.GeoFix
 import com.traceapp.core.contracts.MemoryApi
+import com.traceapp.core.contracts.MostMatchedItem
 import com.traceapp.core.contracts.ObjectStore
 import com.traceapp.core.contracts.RecordSightingRequest
 import com.traceapp.core.contracts.RecordSightingResponse
@@ -111,6 +112,29 @@ class MemoryService @Inject constructor(
             )
         }
         return sightingStore.getTimeline(objectId, limit)
+    }
+
+    override suspend fun mostMatchedItem(atEpochMillis: Long): TraceResult<MostMatchedItem?> {
+        val tagByObjectId = when (val result = objectStore.getAllReferences()) {
+            is TraceResult.Success -> result.value.associate { it.objectId to it.tag }
+            is TraceResult.Failure -> return result
+        }
+        val rows = when (val result = sightingStore.getAllSightingTimes()) {
+            is TraceResult.Success -> result.value
+            is TraceResult.Failure -> return result
+        }
+        return TraceResult.Success(
+            UsageMatcher.topMatch(atEpochMillis, rows, tagByObjectId)?.let { match ->
+                match.tag?.let { tag ->
+                    MostMatchedItem(
+                        objectId = match.objectId,
+                        tag = tag,
+                        similarity = match.similarity,
+                        matchedEpochMillis = match.matchedEpochMillis,
+                    )
+                }
+            },
+        )
     }
 
     private fun shouldDeduplicate(latest: Sighting, request: RecordSightingRequest): Boolean {

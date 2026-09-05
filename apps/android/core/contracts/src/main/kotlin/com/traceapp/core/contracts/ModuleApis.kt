@@ -66,6 +66,14 @@ data class FindLastSeenResponse(
     val lastSeen: Sighting?,
 )
 
+/** The single item whose usage history best matches a given moment (top-1 nearby usage). */
+data class MostMatchedItem(
+    val objectId: String,
+    val tag: String,
+    val similarity: Double,
+    val matchedEpochMillis: Long,
+)
+
 interface MemoryApi {
     suspend fun recordSighting(
         request: RecordSightingRequest,
@@ -77,4 +85,7 @@ interface MemoryApi {
         objectId: String,
         limit: Int = 50,
     ): TraceResult<List<Sighting>>
+
+    /** Item most likely in use at [atEpochMillis], based on periodic usage-time matching. */
+    suspend fun mostMatchedItem(atEpochMillis: Long): TraceResult<MostMatchedItem?>
 }
