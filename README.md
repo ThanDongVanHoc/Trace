@@ -14,7 +14,11 @@ Nguyễn Chí Tính - 24125019
 
 ## Demo video link
 
-[Link youtube](https://youtube.com)
+[Link youtube](https://www.youtube.com/watch?v=K6YkTFI4tYQ)
+
+## Github link
+
+[Link Github](https://github.com/ThanDongVanHoc/Trace/tree/final)
 
 ## Chạy nhanh
 
